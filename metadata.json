@@ -1,0 +1,5 @@
+{
+  "name": "Spindel Scheduler",
+  "description": "A high-performance clinic scheduling application mirroring Google Sheets with advanced logic and Vitreous UI.",
+  "requestFramePermissions": []
+}

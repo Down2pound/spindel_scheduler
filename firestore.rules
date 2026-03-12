@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: locations
+    // Fields: id, name, color
+    //
+    // Collection: doctors
+    // Fields: id, name, prohibitedLocations, availabilityConstraints
+    //
+    // Collection: technicians
+    // Fields: initials, name, isRefracting, pairedDoctorId, availabilityRules
+    //
+    // Collection: assignments
+    // Fields: date, locationId, doctorId, technicianInitials, shift, notes
+    //
+    // Collection: users
+    // Fields: uid, email, role (admin, technician, viewer)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jefchapin@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isTechnician() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'technician' || isAdmin());
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && 
+                    hasOnlyAllowedFields(['uid', 'email', 'role']) && 
+                    request.resource.data.role == 'viewer'; // Default to viewer
+      allow update: if isAdmin(); // Only admins can change roles
+    }
+
+    match /locations/{locationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /doctors/{doctorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /technicians/{techInitials} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

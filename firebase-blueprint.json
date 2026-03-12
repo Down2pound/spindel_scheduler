@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "Location": {
+      "title": "Location",
+      "description": "A clinic location with specific UI color coding.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique code for the location (e.g., D, LD, W, B, R)." },
+        "name": { "type": "string", "description": "Full name of the location." },
+        "color": { "type": "string", "description": "Hex color code for UI rendering." }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "A doctor with specific constraints and availability.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the doctor." },
+        "name": { "type": "string", "description": "Full name of the doctor." },
+        "fixedSchedule": {
+          "type": "object",
+          "properties": {
+            "day": { "type": "string" },
+            "location": { "type": "string" }
+          }
+        },
+        "prohibitedLocations": { "type": "array", "items": { "type": "string" } },
+        "pairedWith": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name"]
+    },
+    "Technician": {
+      "title": "Technician",
+      "description": "A technician with qualification levels and pairings.",
+      "type": "object",
+      "properties": {
+        "initials": { "type": "string", "description": "Initials of the technician." },
+        "name": { "type": "string", "description": "Full name of the technician." },
+        "isRefracting": { "type": "boolean", "description": "Whether the technician is a full refracting technician (star qualification)." },
+        "pairedWith": { "type": "array", "items": { "type": "string" } },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "conditionalPairing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "doctor": { "type": "string" },
+              "day": { "type": "string" },
+              "location": { "type": "string" }
+            }
+          }
+        },
+        "softConstraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "doctor": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["initials", "name", "isRefracting"]
+    },
+    "ScheduleAssignment": {
+      "title": "Schedule Assignment",
+      "description": "A specific assignment for a doctor and technicians at a location on a date.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date", "description": "The date of the assignment (YYYY-MM-DD)." },
+        "locationId": { "type": "string", "description": "The ID of the location." },
+        "doctorId": { "type": "string", "description": "The ID of the assigned doctor." },
+        "technicianInitials": { "type": "array", "items": { "type": "string" }, "description": "List of technician initials assigned." },
+        "shift": { "type": "string", "enum": ["am", "pm", "full"], "description": "The shift type." },
+        "notes": { "type": "string" }
+      },
+      "required": ["date", "locationId", "doctorId"]
+    },
+    "DaySchedule": {
+      "title": "DaySchedule",
+      "description": "The schedule for a specific day",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "dayName": { "type": "string" },
+        "weekId": { "type": "string" },
+        "locations": {
+          "type": "object",
+          "description": "Map of location names to arrays of assignments"
+        }
+      },
+      "required": ["date", "dayName", "weekId", "locations"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "A log of a change made to the schedule.",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "description": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "required": ["timestamp", "userEmail", "action", "description"]
+    }
+  },
+  "firestore": {
+    "/locations/{locationId}": {
+      "schema": "Location",
+      "description": "Collection of clinic locations."
+    },
+    "/doctors/{doctorId}": {
+      "schema": "Doctor",
+      "description": "Collection of doctors."
+    },
+    "/technicians/{techInitials}": {
+      "schema": "Technician",
+      "description": "Collection of technicians."
+    },
+    "/assignments/{assignmentId}": {
+      "schema": "ScheduleAssignment",
+      "description": "Collection of daily schedule assignments."
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "DaySchedule",
+      "description": "Daily schedules indexed by week and day"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Collection of schedule change logs."
+    }
+  }
+}
