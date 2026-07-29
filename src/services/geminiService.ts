@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface ScheduleAction {
   action: 'MOVE' | 'ADD' | 'REMOVE' | 'UPDATE_TIME' | 'UPDATE_CONSTRAINT' | 'UNKNOWN';
-  person?: string;
+  person: string;
   fromLocation?: string;
   toLocation?: string;
   startTime?: string;
@@ -23,31 +23,30 @@ export interface ScheduleAction {
 
 const personActions = new Set<ScheduleAction['action']>(['MOVE', 'ADD', 'REMOVE', 'UPDATE_TIME']);
 
+function unknownAction(reasoning: string): ScheduleAction {
+  return {
+    action: 'UNKNOWN',
+    person: '',
+    reasoning,
+  };
+}
+
 function normalizeScheduleAction(raw: Partial<ScheduleAction>): ScheduleAction {
   const action = raw.action || 'UNKNOWN';
   const reasoning = raw.reasoning || 'No reasoning provided by Gemini.';
 
   if (personActions.has(action) && !raw.person?.trim()) {
-    return {
-      action: 'UNKNOWN',
-      reasoning: `Missing person for ${action}. ${reasoning}`,
-    };
+    return unknownAction(`Missing person for ${action}. ${reasoning}`);
   }
 
   if (action === 'MOVE' && !raw.toLocation?.trim()) {
-    return {
-      action: 'UNKNOWN',
-      reasoning: `Missing destination location for MOVE. ${reasoning}`,
-    };
+    return unknownAction(`Missing destination location for MOVE. ${reasoning}`);
   }
 
   if (action === 'UPDATE_CONSTRAINT') {
     const update = raw.constraintUpdate;
     if (!update?.type || !update.id || !update.updates || Object.keys(update.updates).length === 0) {
-      return {
-        action: 'UNKNOWN',
-        reasoning: `Missing constraint update details. ${reasoning}`,
-      };
+      return unknownAction(`Missing constraint update details. ${reasoning}`);
     }
   }
 
@@ -55,7 +54,7 @@ function normalizeScheduleAction(raw: Partial<ScheduleAction>): ScheduleAction {
     ...raw,
     action,
     reasoning,
-    person: raw.person?.trim(),
+    person: raw.person?.trim() || '',
     fromLocation: raw.fromLocation?.trim(),
     toLocation: raw.toLocation?.trim(),
     startTime: raw.startTime?.trim(),
