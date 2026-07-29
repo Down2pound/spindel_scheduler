@@ -107,7 +107,7 @@ Before production deployment, confirm:
 Apply the prepared `src/App.tsx` patch if you want the admin command executor to support the full advertised behavior:
 
 ```bash
-git apply patches/spindel-app-command-dnd.patch
+git apply --ignore-whitespace patches/spindel-app-command-dnd.patch
 npm run lint
 npm run test:parser
 npm run build
