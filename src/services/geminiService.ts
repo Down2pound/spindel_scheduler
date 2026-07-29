@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface ScheduleAction {
   action: 'MOVE' | 'ADD' | 'REMOVE' | 'UPDATE_TIME' | 'UPDATE_CONSTRAINT' | 'UNKNOWN';
-  person: string;
+  person?: string;
   fromLocation?: string;
   toLocation?: string;
   startTime?: string;
@@ -17,8 +17,51 @@ export interface ScheduleAction {
   constraintUpdate?: {
     type: 'DOCTOR' | 'TECHNICIAN';
     id: string;
-    updates: any;
+    updates: Record<string, unknown>;
   };
+}
+
+const personActions = new Set<ScheduleAction['action']>(['MOVE', 'ADD', 'REMOVE', 'UPDATE_TIME']);
+
+function normalizeScheduleAction(raw: Partial<ScheduleAction>): ScheduleAction {
+  const action = raw.action || 'UNKNOWN';
+  const reasoning = raw.reasoning || 'No reasoning provided by Gemini.';
+
+  if (personActions.has(action) && !raw.person?.trim()) {
+    return {
+      action: 'UNKNOWN',
+      reasoning: `Missing person for ${action}. ${reasoning}`,
+    };
+  }
+
+  if (action === 'MOVE' && !raw.toLocation?.trim()) {
+    return {
+      action: 'UNKNOWN',
+      reasoning: `Missing destination location for MOVE. ${reasoning}`,
+    };
+  }
+
+  if (action === 'UPDATE_CONSTRAINT') {
+    const update = raw.constraintUpdate;
+    if (!update?.type || !update.id || !update.updates || Object.keys(update.updates).length === 0) {
+      return {
+        action: 'UNKNOWN',
+        reasoning: `Missing constraint update details. ${reasoning}`,
+      };
+    }
+  }
+
+  return {
+    ...raw,
+    action,
+    reasoning,
+    person: raw.person?.trim(),
+    fromLocation: raw.fromLocation?.trim(),
+    toLocation: raw.toLocation?.trim(),
+    startTime: raw.startTime?.trim(),
+    endTime: raw.endTime?.trim(),
+    day: raw.day?.trim(),
+  } as ScheduleAction;
 }
 
 export async function processScheduleCommand(command: string, currentSchedule: SheetDaySchedule, doctors: Record<string, Doctor>, technicians: Record<string, Technician>): Promise<ScheduleAction> {
@@ -41,15 +84,15 @@ export async function processScheduleCommand(command: string, currentSchedule: S
       Command: "${command}"
 
       Rules:
-      - MOVE: Moving a person from one location to another in the current schedule.
-      - ADD: Adding a person to a location in the current schedule.
-      - REMOVE: Removing a person from a location in the current schedule.
-      - UPDATE_TIME: Changing the start or end time for a person in the current schedule.
+      - MOVE: Moving a person from one location to another in the current schedule. Requires person and toLocation.
+      - ADD: Adding a person to a location in the current schedule. Requires person and toLocation.
+      - REMOVE: Removing a person from a location in the current schedule. Requires person.
+      - UPDATE_TIME: Changing the start or end time for a person in the current schedule. Requires person.
       - UPDATE_CONSTRAINT: Modifying the permanent logic or constraints for a doctor or technician.
         Example: "Doctor SW can no longer work in Derry" -> { action: "UPDATE_CONSTRAINT", constraintUpdate: { type: "DOCTOR", id: "SW", updates: { prohibitedLocations: ["D", ...] } } }
         Example: "Technician BJ is now paired with Dr. Guenena" -> { action: "UPDATE_CONSTRAINT", constraintUpdate: { type: "TECHNICIAN", id: "BJ", updates: { pairedWith: ["MG"] } } }
       
-      If the command is ambiguous or impossible, return action "UNKNOWN".
+      If the command is ambiguous, missing required details, or impossible, return action "UNKNOWN".
     `;
 
     const response = await ai.models.generateContent({
@@ -82,7 +125,7 @@ export async function processScheduleCommand(command: string, currentSchedule: S
       }
     });
 
-    return JSON.parse(response.text || "{}") as ScheduleAction;
+    return normalizeScheduleAction(JSON.parse(response.text || "{}") as Partial<ScheduleAction>);
   } catch (error) {
     console.error("Gemini Command Error:", error);
     throw error;
