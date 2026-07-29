@@ -33,8 +33,9 @@ const LOCATION_CODES: Record<string, string> = {
   S: 'Surgery',
 };
 
-const NON_CLINIC_STATUS = new Set([
-  'OFF', 'ADMIN', 'ADM', 'LASIK', 'BIO', 'VF', 'OCT', 'OUT', 'REQ', 'PREOPS',
+const OFF_STATUSES = new Set(['OFF']);
+const FLOATING_STATUSES = new Set([
+  'ADMIN', 'ADM', 'LASIK', 'BIO', 'VF', 'OCT', 'OUT', 'REQ', 'PREOPS',
   'PREOPS/ADMIN', 'SERUM TEARS', 'MEETING', 'LUNCH', 'FLOAT', 'FLOATING'
 ]);
 
@@ -65,7 +66,12 @@ const inferRole = (personId: string, roleHint: RoleHint): RoleHint => {
 };
 
 const resolveLocationFromStatus = (status: string): string => {
-  const parts = normalizeCode(status).split(/[\s/,]+/).filter(Boolean);
+  const upperStatus = normalizeCode(status);
+  const parts = upperStatus.split(/[\s/,]+/).filter(Boolean);
+
+  if (parts.some(part => OFF_STATUSES.has(part))) return 'Off';
+  if (FLOATING_STATUSES.has(upperStatus) || parts.some(part => FLOATING_STATUSES.has(part))) return 'Floating';
+
   for (const part of parts) {
     if (LOCATION_CODES[part]) return LOCATION_CODES[part];
   }
@@ -149,11 +155,6 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
 
       if (!location && status) {
         location = resolveLocationFromStatus(status);
-      }
-
-      const upperStatus = normalizeCode(status);
-      if (!location && (upperStatus === 'OFF' || upperStatus.includes(' OFF'))) {
-        location = 'Off';
       }
 
       if (startTime || endTime || location || status) {
