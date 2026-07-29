@@ -10,9 +10,10 @@ Recent fixes on `main` include:
 - parser regression coverage via `npm run test:parser`
 - safer Gemini command validation before schedule changes are applied
 - Gemini panel error handling so the UI does not get stuck while analyzing or chatting
+- production build polish for app metadata, font loading, and expected bundle size
 - project metadata and type packages needed for local TypeScript checks
 
-A larger admin UI patch for AI add/remove commands and drag/edit state handling was prepared separately in the Codex workspace as `outputs/spindel-app-command-dnd.patch` because the remote-only work environment could not push a full `src/App.tsx` replacement cleanly.
+A larger admin UI patch for AI add/remove commands and drag/edit state handling is available at `patches/spindel-app-command-dnd.patch`. It was verified locally, but is kept as a patch file so it can be applied from a normal Git checkout.
 
 ## Requirements
 
@@ -101,19 +102,21 @@ Before production deployment, confirm:
 9. Deploy through the chosen host.
 10. Set production environment variables in the host dashboard.
 
-## Optional Next Patch
+## Optional Admin Patch
 
-Apply the prepared `src/App.tsx` patch from the Codex output artifact if you want the admin command executor to support the full advertised behavior:
+Apply the prepared `src/App.tsx` patch if you want the admin command executor to support the full advertised behavior:
+
+```bash
+git apply patches/spindel-app-command-dnd.patch
+npm run lint
+npm run test:parser
+npm run build
+```
+
+The patch adds:
 
 - `ADD` commands
 - `REMOVE` commands
 - day-aware AI commands
 - safer immutable updates for drag/drop and edit modal changes
 - audit logs for manual add/edit/delete changes
-
-After applying it, rerun:
-
-```bash
-npm run lint
-npm run build
-```
