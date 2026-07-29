@@ -12,6 +12,7 @@ Recent fixes on `main` include:
 - Gemini panel error handling so the UI does not get stuck while analyzing or chatting
 - production build polish for app metadata, font loading, and expected bundle size
 - project metadata and type packages needed for local TypeScript checks
+- GitHub Actions CI for parser tests, type-checking, and production builds on pushes and pull requests
 
 A larger admin UI patch for AI add/remove commands and drag/edit state handling is available at `patches/spindel-app-command-dnd.patch`. It was verified locally, but is kept as a patch file so it can be applied from a normal Git checkout.
 
@@ -68,6 +69,8 @@ pnpm run build
 
 If pnpm warns about ignored build scripts, approve trusted project dependencies or use npm for the fastest first pass.
 
+GitHub Actions also runs these checks automatically for pushes to `main` and for pull requests.
+
 ## Google Sheet Setup
 
 1. Open the scheduler source Google Sheet.
@@ -92,15 +95,17 @@ Before production deployment, confirm:
 ## Deployment Checklist
 
 1. Pull latest `main` on the deployment machine.
-2. Install dependencies.
-3. Create `.env.local` with the Gemini key.
-4. Run `npm run test:parser`.
-5. Run `npm run lint`.
-6. Run `npm run build`.
-7. Smoke test `npm run dev` with Google sign-in and Sheet sync.
-8. Confirm Firestore reads/writes work for admin schedule edits.
-9. Deploy through the chosen host.
-10. Set production environment variables in the host dashboard.
+2. Check GitHub Actions for a passing CI run, or run the verification commands locally.
+3. Install dependencies.
+4. Create `.env.local` with the Gemini key.
+5. Run `npm run test:parser`.
+6. Run `npm run lint`.
+7. Run `npm run build`.
+8. Smoke test `npm run dev` with Google sign-in and Sheet sync.
+9. Confirm Firestore reads/writes work for admin schedule edits.
+10. Deploy through the chosen host.
+11. Set production environment variables in the host dashboard.
+12. Add the production domain to Firebase Authentication authorized domains.
 
 ## Optional Admin Patch
 
