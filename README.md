@@ -13,6 +13,7 @@ Recent fixes on `main` include:
 - production build polish for app metadata, font loading, and expected bundle size
 - project metadata and type packages needed for local TypeScript checks
 - GitHub Actions CI for parser tests, type-checking, and production builds on pushes and pull requests
+- static host configs for Firebase Hosting, Netlify, and Vercel
 
 A larger admin UI patch for AI add/remove commands and drag/edit state handling is available at `patches/spindel-app-command-dnd.patch`. It was verified locally, but is kept as a patch file so it can be applied from a normal Git checkout.
 
@@ -106,6 +107,39 @@ Before production deployment, confirm:
 10. Deploy through the chosen host.
 11. Set production environment variables in the host dashboard.
 12. Add the production domain to Firebase Authentication authorized domains.
+
+## Deployment Options
+
+This is a static Vite app after `npm run build`, so any static host that serves `dist` works.
+
+Firebase Hosting:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add
+npm run build
+firebase deploy --only hosting
+```
+
+Netlify CLI:
+
+```bash
+npm install -g netlify-cli
+netlify login
+npm run build
+netlify deploy --prod --dir=dist
+```
+
+Vercel CLI:
+
+```bash
+npm install -g vercel
+vercel login
+vercel --prod
+```
+
+For dashboard-based deploys, use `npm run build` as the build command and `dist` as the publish/output directory.
 
 ## Optional Admin Patch
 
