@@ -17,26 +17,170 @@ export interface SheetDaySchedule {
   notes?: string;
 }
 
-const DOCTOR_IDS = ['DV', 'DS', 'GS', 'MF', 'DR', 'MG', 'BN', 'NL', 'JO', 'JN', 'JC', 'SW', 'Wood', 'GUENENA', 'RAMSEY', 'CHANG', 'V', 'S', 'F', 'G', 'N', 'O', 'J'];
+type RoleHint = 'Doctor' | 'Technician' | null;
 
-// Helper to determine if a string is a time (e.g. "7:15a", "12:30p")
-const isTime = (val: string): boolean => {
-  if (!val) return false;
-  return /^\d{1,2}(:\d{2})?[ap]?$/i.test(val) || val.toLowerCase().includes('a') || val.toLowerCase().includes('p') || val.includes(':');
+const DOCTOR_IDS = new Set([
+  'DV', 'DS', 'GS', 'MF', 'DR', 'MG', 'BN', 'NL', 'JO', 'JN', 'JC', 'SW', 'WOOD',
+  'GUENENA', 'RAMSEY', 'CHANG', 'V', 'S', 'F', 'G', 'N', 'O', 'J'
+]);
+
+const LOCATION_CODES: Record<string, string> = {
+  D: 'Derry',
+  LD: 'Londonderry',
+  W: 'Windham',
+  B: 'Bedford',
+  R: 'Raymond',
+  S: 'Surgery',
 };
 
-// Helper to determine if a person is a doctor
-const isDoctor = (personId: string, rowIdx: number): boolean => {
-  if (!personId) return false;
-  const upper = personId.toUpperCase();
-  // User specific rule: Red JC = Dr. Chang, Black JC = Technician.
-  // Dr. Chang (JC) only works on Thursdays in Derry.
-  if (upper === 'JC') return false; // Default to technician for this week as per user request
-  if (DOCTOR_IDS.includes(upper)) return true;
-  // Also check if it looks like a name (e.g. "Dr. ...")
-  if (upper.startsWith('DR.') || upper.startsWith('DR ')) return true;
-  return false;
+const NON_CLINIC_STATUS = new Set([
+  'OFF', 'ADMIN', 'ADM', 'LASIK', 'BIO', 'VF', 'OCT', 'OUT', 'REQ', 'PREOPS',
+  'PREOPS/ADMIN', 'SERUM TEARS', 'MEETING', 'LUNCH', 'FLOAT', 'FLOATING'
+]);
+
+const DAY_START_COLS = [1, 4, 7, 10, 13, 16];
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ');
+
+const normalizeCode = (value: string): string => normalize(value).toUpperCase();
+
+const isTime = (value: string): boolean => {
+  const val = normalize(value).toLowerCase();
+  return /^(?:\d{1,2})(?::\d{2})?\s*(?:a|am|p|pm)?$/.test(val);
 };
+
+const getRoleSection = (value: string): RoleHint | undefined => {
+  const label = normalizeCode(value);
+  if (/^(DOCTOR|DOCTORS|MD|MDS)$/.test(label)) return 'Doctor';
+  if (/^(TECH|TECHS|TECHNICIAN|TECHNICIANS)$/.test(label)) return 'Technician';
+  return undefined;
+};
+
+const inferRole = (personId: string, roleHint: RoleHint): RoleHint => {
+  if (roleHint) return roleHint;
+  const upper = normalizeCode(personId);
+  if (upper.startsWith('DR.') || upper.startsWith('DR ')) return 'Doctor';
+  return DOCTOR_IDS.has(upper) ? 'Doctor' : 'Technician';
+};
+
+const resolveLocationFromStatus = (status: string): string => {
+  const parts = normalizeCode(status).split(/[\s/,]+/).filter(Boolean);
+  for (const part of parts) {
+    if (LOCATION_CODES[part]) return LOCATION_CODES[part];
+  }
+  return '';
+};
+
+const defaultLocations = (): Record<string, SheetAssignment[]> => ({
+  Derry: [],
+  Londonderry: [],
+  Windham: [],
+  Bedford: [],
+  Raymond: [],
+  Surgery: [],
+  Off: [],
+  Floating: [],
+});
+
+export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
+  if (!data || data.length < 5) {
+    throw new Error('Invalid sheet data format');
+  }
+
+  const schedules: SheetDaySchedule[] = [];
+  let roleHint: RoleHint = null;
+
+  for (let i = 0; i < DAY_START_COLS.length; i++) {
+    const col = DAY_START_COLS[i];
+    const dayName = normalize(data[1]?.[col] || '') || DAY_NAMES[i];
+    const date = normalize(data[2]?.[col] || '');
+
+    const daySchedule: SheetDaySchedule = {
+      date,
+      dayName,
+      locations: defaultLocations(),
+      notes: '',
+    };
+
+    roleHint = null;
+
+    for (let row = 3; row < Math.min(data.length, 100); row++) {
+      const personId = normalize(data[row]?.[0] || '');
+      if (!personId) continue;
+
+      const section = getRoleSection(personId);
+      if (section !== undefined) {
+        roleHint = section;
+        continue;
+      }
+
+      if (normalizeCode(personId) === 'NOTES') {
+        daySchedule.notes = normalize(data[row]?.[col] || '');
+        continue;
+      }
+
+      const vals = [
+        normalize(data[row]?.[col] || ''),
+        normalize(data[row]?.[col + 1] || ''),
+        normalize(data[row]?.[col + 2] || ''),
+      ];
+
+      if (vals.every(v => !v)) continue;
+
+      let location = '';
+      let status = '';
+      let startTime = '';
+      let endTime = '';
+
+      for (const val of vals) {
+        if (!val) continue;
+        const upper = normalizeCode(val);
+
+        if (LOCATION_CODES[upper]) {
+          location = LOCATION_CODES[upper];
+        } else if (isTime(val)) {
+          if (!startTime) startTime = val;
+          else if (!endTime) endTime = val;
+        } else {
+          status = status ? `${status} / ${val}` : val;
+        }
+      }
+
+      if (!location && status) {
+        location = resolveLocationFromStatus(status);
+      }
+
+      const upperStatus = normalizeCode(status);
+      if (!location && (upperStatus === 'OFF' || upperStatus.includes(' OFF'))) {
+        location = 'Off';
+      }
+
+      if (startTime || endTime || location || status) {
+        const role = inferRole(personId, roleHint);
+        const assignment: SheetAssignment = {
+          person: personId,
+          role: role || 'Technician',
+          startTime,
+          endTime,
+          location: location || 'Floating',
+          isDoctor: role === 'Doctor',
+          status,
+        };
+
+        const targetLoc = assignment.location;
+        if (!daySchedule.locations[targetLoc]) {
+          daySchedule.locations[targetLoc] = [];
+        }
+        daySchedule.locations[targetLoc].push(assignment);
+      }
+    }
+
+    schedules.push(daySchedule);
+  }
+
+  return schedules;
+}
 
 export async function fetchSheetData(url: string, gid?: string): Promise<SheetDaySchedule[]> {
   let csvUrl = url;
@@ -48,121 +192,19 @@ export async function fetchSheetData(url: string, gid?: string): Promise<SheetDa
   }
 
   return new Promise((resolve, reject) => {
-    Papa.parse(csvUrl, {
+    Papa.parse<string[]>(csvUrl, {
       download: true,
+      skipEmptyLines: false,
       complete: (results) => {
-        const data = results.data as string[][];
-        if (!data || data.length < 5) {
-          reject(new Error('Invalid sheet data format'));
-          return;
+        try {
+          resolve(parseSheetRows(results.data));
+        } catch (error) {
+          reject(error);
         }
-
-        const schedules: SheetDaySchedule[] = [];
-        const dayStartCols = [1, 4, 7, 10, 13, 16];
-        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-        const locMap: Record<string, string> = {
-          'D': 'Derry',
-          'LD': 'Londonderry',
-          'W': 'Windham',
-          'B': 'Bedford',
-          'R': 'Raymond'
-        };
-
-        const statuses = ['OFF', 'ADMIN', 'SURGERY', 'LASIK', 'BIO', 'VF', 'OCT', 'OUT', 'REQ', 'PREOPS/ADMIN', 'SERUM TEARS', 'MEETING', 'LUNCH'];
-
-        for (let i = 0; i < dayStartCols.length; i++) {
-          const col = dayStartCols[i];
-          const dayName = data[1]?.[col]?.trim() || dayNames[i];
-          const date = data[2]?.[col]?.trim() || '';
-          
-          const daySchedule: SheetDaySchedule = {
-            date,
-            dayName,
-            locations: {
-              'Derry': [], 'Londonderry': [], 'Windham': [], 'Bedford': [], 'Raymond': [], 'Floating': []
-            },
-            notes: ''
-          };
-
-          // Parse rows 3 to 100 to be safe
-          for (let row = 3; row < Math.min(data.length, 100); row++) {
-            const personId = data[row]?.[0]?.trim();
-            if (!personId || personId.toLowerCase() === 'doctor' || personId.toLowerCase() === 'tech') continue;
-
-            if (personId.toLowerCase() === 'notes') {
-              daySchedule.notes = data[row]?.[col]?.trim() || '';
-              continue;
-            }
-
-            const vals = [
-              data[row]?.[col]?.trim() || '',
-              data[row]?.[col + 1]?.trim() || '',
-              data[row]?.[col + 2]?.trim() || ''
-            ];
-
-            if (vals.every(v => !v)) continue;
-
-            let location = '';
-            let status = '';
-            let startTime = '';
-            let endTime = '';
-
-            // Identify what's in the columns
-            vals.forEach(val => {
-              if (!val) return;
-              const upper = val.toUpperCase();
-              
-              if (locMap[upper]) {
-                location = locMap[upper];
-              } else if (statuses.some(s => upper.includes(s))) {
-                status = val;
-              } else if (isTime(val)) {
-                if (!startTime) startTime = val;
-                else if (!endTime) endTime = val;
-              } else if (val.length <= 3 && !isTime(val)) {
-                // Potential location code not in map or just noise
-                if (locMap[upper]) location = locMap[upper];
-              }
-            });
-
-            // Fallback for location if not explicitly found but status implies one
-            if (!location && status) {
-              // Check if any part of the status matches a location code
-              const parts = status.split('/').map(p => p.trim().toUpperCase());
-              parts.forEach(p => {
-                if (locMap[p]) location = locMap[p];
-              });
-            }
-
-            if (startTime || endTime || location || status) {
-              const isDoc = isDoctor(personId, row);
-              const assignment: SheetAssignment = {
-                person: personId,
-                role: isDoc ? 'Doctor' : 'Technician',
-                startTime,
-                endTime,
-                location: location || 'Floating',
-                isDoctor: isDoc,
-                status: status
-              };
-
-              const targetLoc = location || 'Floating';
-              if (!daySchedule.locations[targetLoc]) {
-                daySchedule.locations[targetLoc] = [];
-              }
-              daySchedule.locations[targetLoc].push(assignment);
-            }
-          }
-          
-          schedules.push(daySchedule);
-        }
-
-        resolve(schedules);
       },
       error: (error) => {
         reject(error);
-      }
+      },
     });
   });
 }
