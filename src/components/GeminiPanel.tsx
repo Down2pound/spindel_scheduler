@@ -23,32 +23,47 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose 
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeSchedule(scheduleData);
+      setAnalysis(result);
+    } catch (error) {
+      console.error('Gemini analysis failed:', error);
+      setAnalysis('Unable to analyze the schedule right now. Please try again after checking the Gemini API key and network connection.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   useEffect(() => {
     handleAnalyze();
-  }, []);
+  }, [scheduleData]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    const result = await analyzeSchedule(scheduleData);
-    setAnalysis(result);
-    setIsAnalyzing(false);
-  };
-
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsTyping(true);
 
-    const response = await chatWithGemini(userMessage, scheduleData);
-    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    setIsTyping(false);
+    try {
+      const response = await chatWithGemini(userMessage, scheduleData);
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error) {
+      console.error('Gemini chat failed:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'I could not reach Gemini for that request. Please try again after checking the API key and connection.',
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -155,10 +170,12 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose 
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Type your question..."
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-[0.7rem] font-mono focus:outline-none focus:border-emerald-500/30 transition-all"
+              disabled={isTyping}
             />
             <button 
               onClick={handleSend}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+              disabled={!input.trim() || isTyping}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-30"
             >
               <Send className="w-4 h-4" />
             </button>
