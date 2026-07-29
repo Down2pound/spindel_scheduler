@@ -1,0 +1,204 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index bbe21e4..c20d3d9 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -729,6 +729,48 @@ export default function App() {
+     }
+   };
+ 
++  const cloneDaySchedule = (day: SheetDaySchedule): SheetDaySchedule => ({
++    ...day,
++    locations: Object.fromEntries(
++      Object.entries(day.locations).map(([locationId, assignments]) => [
++        locationId,
++        assignments.map(assignment => ({ ...assignment })),
++      ])
++    ),
++  });
++
++  const getActionDayIndex = (day?: string) => {
++    if (!day) return selectedDayIdx;
++    const normalizedDay = day.toLowerCase();
++    const foundIdx = allSchedules.findIndex(scheduleDay =>
++      scheduleDay.dayName.toLowerCase().startsWith(normalizedDay.slice(0, 3)) ||
++      scheduleDay.date === day
++    );
++    return foundIdx >= 0 ? foundIdx : selectedDayIdx;
++  };
++
++  const findPersonLocation = (daySchedule: SheetDaySchedule, person: string) => {
++    const normalizedPerson = person.toLowerCase();
++    return Object.keys(daySchedule.locations).find(locationId =>
++      daySchedule.locations[locationId].some(assignment => assignment.person.toLowerCase() === normalizedPerson)
++    );
++  };
++
++  const resolveLocationName = (location?: string) => {
++    if (!location) return '';
++    const normalizedLocation = location.toLowerCase();
++    const loc = LOCATIONS.find(l =>
++      l.id.toLowerCase() === normalizedLocation ||
++      l.code.toLowerCase() === normalizedLocation
++    );
++    return loc?.id || location;
++  };
++
++  const persistDaySchedule = async (daySchedule: SheetDaySchedule) => {
++    const scheduleId = `${selectedWeek.id}_${daySchedule.dayName}`;
++    await setDoc(doc(db, 'schedules', scheduleId), daySchedule);
++  };
++
+   const executeCommand = async () => {
+     if (!commandInput.trim() || isProcessingCommand) return;
+     
+@@ -741,33 +783,64 @@ export default function App() {
+         return;
+       }
+ 
+-      const newSchedule = { ...schedule };
++      const targetDayIdx = getActionDayIndex(result.day);
++      const newAllSchedules = allSchedules.map((day, idx) => idx === targetDayIdx ? cloneDaySchedule(day) : day);
++      const newSchedule = newAllSchedules[targetDayIdx];
+       let description = '';
+ 
+       if (result.action === 'MOVE') {
+-        const fromLoc = result.fromLocation || 'Floating';
+-        const toLoc = result.toLocation || 'Floating';
+-        const personIdx = newSchedule.locations[fromLoc]?.findIndex(a => a.person === result.person);
++        const fromLoc = resolveLocationName(result.fromLocation) || findPersonLocation(newSchedule, result.person);
++        const toLoc = resolveLocationName(result.toLocation) || 'Floating';
+         
+-        if (personIdx !== -1) {
++        if (fromLoc && newSchedule.locations[fromLoc]) {
++          const personIdx = newSchedule.locations[fromLoc].findIndex(a => a.person === result.person);
++          if (personIdx === -1) {
++            throw new Error(`Person ${result.person} not found in ${fromLoc}`);
++          }
+           const [assignment] = newSchedule.locations[fromLoc].splice(personIdx, 1);
+           assignment.location = toLoc;
+           if (!newSchedule.locations[toLoc]) newSchedule.locations[toLoc] = [];
+           newSchedule.locations[toLoc].push(assignment);
+-          description = `Moved ${result.person} from ${fromLoc} to ${toLoc}`;
++          description = `Moved ${result.person} from ${fromLoc} to ${toLoc} on ${newSchedule.dayName}`;
+         } else {
++          throw new Error(`Person ${result.person} not found`);
++        }
++      } else if (result.action === 'ADD') {
++        const toLoc = resolveLocationName(result.toLocation || result.fromLocation) || 'Floating';
++        if (!newSchedule.locations[toLoc]) newSchedule.locations[toLoc] = [];
++        const isDoctor = Boolean(doctors[result.person]);
++        newSchedule.locations[toLoc].push({
++          person: result.person,
++          role: isDoctor ? 'Doctor' : 'Technician',
++          startTime: result.startTime || '',
++          endTime: result.endTime || '',
++          location: toLoc,
++          isDoctor,
++          status: '',
++        });
++        description = `Added ${result.person} to ${toLoc} on ${newSchedule.dayName}`;
++      } else if (result.action === 'REMOVE') {
++        const fromLoc = resolveLocationName(result.fromLocation) || findPersonLocation(newSchedule, result.person);
++        if (!fromLoc || !newSchedule.locations[fromLoc]) {
++          throw new Error(`Person ${result.person} not found`);
++        }
++        const personIdx = newSchedule.locations[fromLoc].findIndex(a => a.person === result.person);
++        if (personIdx === -1) {
+           throw new Error(`Person ${result.person} not found in ${fromLoc}`);
+         }
++        newSchedule.locations[fromLoc].splice(personIdx, 1);
++        description = `Removed ${result.person} from ${fromLoc} on ${newSchedule.dayName}`;
+       } else if (result.action === 'UPDATE_TIME') {
+-        const loc = result.fromLocation || Object.keys(newSchedule.locations).find(l => newSchedule.locations[l].some(a => a.person === result.person));
++        const loc = resolveLocationName(result.fromLocation) || findPersonLocation(newSchedule, result.person);
+         if (loc) {
+           const assignment = newSchedule.locations[loc].find(a => a.person === result.person);
+           if (assignment) {
+             if (result.startTime) assignment.startTime = result.startTime;
+             if (result.endTime) assignment.endTime = result.endTime;
+-            description = `Updated times for ${result.person} in ${loc}`;
++            description = `Updated times for ${result.person} in ${loc} on ${newSchedule.dayName}`;
+           }
+         }
++        if (!description) throw new Error(`Person ${result.person} not found`);
+       } else if (result.action === 'UPDATE_CONSTRAINT' && result.constraintUpdate) {
+         const { type, id, updates } = result.constraintUpdate;
+         if (type === 'DOCTOR') {
+@@ -781,8 +854,9 @@ export default function App() {
+ 
+       if (description) {
+         if (result.action !== 'UPDATE_CONSTRAINT') {
+-          const scheduleId = `${selectedWeek.id}_${schedule.dayName}`;
+-          await setDoc(doc(db, 'schedules', scheduleId), newSchedule);
++          setAllSchedules(newAllSchedules);
++          if (targetDayIdx === selectedDayIdx) setSchedule(newSchedule);
++          await persistDaySchedule(newSchedule);
+         }
+         await addLog('AI_COMMAND', description, { command: commandInput, result });
+         setCommandInput('');
+@@ -810,7 +884,8 @@ export default function App() {
+   const handleDragStart = (event: DragStartEvent) => {
+     const { active } = event;
+     const [locId, dIdx, aIdx] = (active.id as string).split('|');
+-    const assignment = allSchedules[parseInt(dIdx)].locations[locId][parseInt(aIdx)];
++    const assignment = allSchedules[parseInt(dIdx)]?.locations[locId]?.[parseInt(aIdx)];
++    if (!assignment) return;
+     setActiveId(active.id as string);
+     setActiveAssignment(assignment);
+   };
+@@ -826,8 +901,14 @@ export default function App() {
+         const dIdx = parseInt(fromDayIdx);
+         const aIdx = parseInt(fromAssIdx);
+         const newAllSchedules = [...allSchedules];
+-        const daySchedule = { ...newAllSchedules[dIdx] };
++        const daySchedule = cloneDaySchedule(newAllSchedules[dIdx]);
+         
++        if (!daySchedule.locations[fromLoc]?.[aIdx]) {
++          setActiveId(null);
++          setActiveAssignment(null);
++          return;
++        }
++
+         const [assignment] = daySchedule.locations[fromLoc].splice(aIdx, 1);
+         assignment.location = toLoc;
+         if (!daySchedule.locations[toLoc]) daySchedule.locations[toLoc] = [];
+@@ -835,9 +916,9 @@ export default function App() {
+         
+         newAllSchedules[dIdx] = daySchedule;
+         setAllSchedules(newAllSchedules);
++        if (dIdx === selectedDayIdx) setSchedule(daySchedule);
+         
+-        const scheduleId = `${selectedWeek.id}_${daySchedule.dayName}`;
+-        await setDoc(doc(db, 'schedules', scheduleId), daySchedule);
++        await persistDaySchedule(daySchedule);
+         await addLog('DRAG_DROP', `Moved ${assignment.person} from ${fromLoc} to ${toLoc} on ${daySchedule.dayName}`);
+       }
+     }
+@@ -922,7 +1003,7 @@ export default function App() {
+   const updateAssignment = async (updated: SheetAssignment | null) => {
+     if (!editingAssignment) return;
+     
+-    const newSchedule = { ...schedule };
++    const newSchedule = cloneDaySchedule(schedule);
+     const locAssignments = [...(newSchedule.locations[editingAssignment.locationId] || [])];
+     
+     if (updated === null) {
+@@ -937,9 +1018,16 @@ export default function App() {
+     
+     newSchedule.locations[editingAssignment.locationId] = locAssignments;
+     
+-    const scheduleId = `${selectedWeek.id}_${schedule.dayName}`;
+     try {
+-      await setDoc(doc(db, 'schedules', scheduleId), newSchedule);
++      const newAllSchedules = allSchedules.map((day, idx) => idx === selectedDayIdx ? newSchedule : day);
++      setSchedule(newSchedule);
++      setAllSchedules(newAllSchedules);
++      await persistDaySchedule(newSchedule);
++      await addLog(
++        updated === null ? 'DELETE_ASSIGNMENT' : editingAssignment.index === -1 ? 'ADD_ASSIGNMENT' : 'UPDATE_ASSIGNMENT',
++        `${updated === null ? 'Deleted' : editingAssignment.index === -1 ? 'Added' : 'Updated'} ${updated?.person || editingAssignment.assignment.person} on ${newSchedule.dayName}`,
++        { locationId: editingAssignment.locationId, updated }
++      );
+       setEditingAssignment(null);
+     } catch (err) {
+       console.error(err);
