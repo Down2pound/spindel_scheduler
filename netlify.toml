@@ -1,5 +1,5 @@
 [build]
-  command = "npm exec --yes --package=pnpm@11.9.0 -- pnpm install --frozen-lockfile && npm exec --yes --package=pnpm@11.9.0 -- pnpm run build"
+  command = "npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile && npm exec --yes --package=pnpm@10.25.0 -- pnpm run build"
   publish = "dist"
 
 [[redirects]]

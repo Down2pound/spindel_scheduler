@@ -1,6 +1,6 @@
 {
-  "installCommand": "npm exec --yes --package=pnpm@11.9.0 -- pnpm install --frozen-lockfile",
-  "buildCommand": "npm exec --yes --package=pnpm@11.9.0 -- pnpm run build",
+  "installCommand": "npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile",
+  "buildCommand": "npm exec --yes --package=pnpm@10.25.0 -- pnpm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {

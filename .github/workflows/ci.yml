@@ -19,13 +19,13 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm exec --yes --package=pnpm@11.9.0 -- pnpm install --frozen-lockfile
+        run: npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile
 
       - name: Run parser regression tests
-        run: npm exec --yes --package=pnpm@11.9.0 -- pnpm run test:parser
+        run: npm exec --yes --package=pnpm@10.25.0 -- pnpm run test:parser
 
       - name: Type-check
-        run: npm exec --yes --package=pnpm@11.9.0 -- pnpm run lint
+        run: npm exec --yes --package=pnpm@10.25.0 -- pnpm run lint
 
       - name: Build
-        run: npm exec --yes --package=pnpm@11.9.0 -- pnpm run build
+        run: npm exec --yes --package=pnpm@10.25.0 -- pnpm run build
