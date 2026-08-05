@@ -59,10 +59,11 @@ import { CSS } from '@dnd-kit/utilities';
 
 // --- Types ---
 const THEMES = [
-  { id: 'dark', label: 'Vitreous Dark', color: '#05070a' },
-  { id: 'light', label: 'Clinical Light', color: '#f8fafc' },
-  { id: 'midnight', label: 'Midnight Blue', color: '#020617' },
-  { id: 'forest', label: 'Forest Green', color: '#022c22' },
+  { id: 'brand', label: 'Spindel Classic', color: '#243078' },
+  { id: 'dark', label: 'Calm Charcoal', color: '#121116' },
+  { id: 'light', label: 'Soft Daylight', color: '#f7f4f2' },
+  { id: 'midnight', label: 'Deep Indigo', color: '#020617' },
+  { id: 'forest', label: 'Quiet Sage', color: '#022c22' },
 ];
 
 const LOCATIONS = SCHEDULE_LOCATIONS;
@@ -512,7 +513,7 @@ function EditAssignmentModal({ assignment, onClose, onSave }: {
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 30 }}
-        className="relative w-full max-w-md bg-[#0a0c10] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl"
+        className="brand-surface relative w-full max-w-md bg-white border border-[#dce1eb] rounded-3xl p-10 shadow-2xl"
       >
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-xl font-bold">Edit Assignment: {assignment.person}</h2>
@@ -643,7 +644,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [editingAssignment, setEditingAssignment] = useState<{ assignment: SheetAssignment, locationId: string, index: number } | null>(null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState('brand');
   const [showGemini, setShowGemini] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
@@ -1196,21 +1197,21 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-4 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(30,40,60,0.2)_0%,transparent_70%)]" />
+      <div className="min-h-screen bg-[#f0f2f7] flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(36,48,120,0.12)_0%,transparent_60%)]" />
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-[var(--glass)] backdrop-blur-2xl border border-[var(--border)] p-10 rounded-[2.5rem] text-center relative z-10 shadow-2xl"
+          className="max-w-md w-full bg-white border border-[#dce1eb] p-10 rounded-3xl text-center relative z-10 shadow-[0_24px_70px_rgba(36,48,120,0.14)]"
         >
-          <div className="w-20 h-20 bg-[var(--glass)] rounded-3xl flex items-center justify-center mx-auto mb-8 border border-[var(--border)] shadow-inner">
-            <LayoutDashboard className="w-10 h-10 text-[var(--text)]" />
+          <div className="w-20 h-20 bg-[#243078] rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+            <LayoutDashboard className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-[var(--text)] mb-3 tracking-tight">Spindel Scheduler</h1>
-          <p className="text-[var(--text-muted)] mb-10 text-sm leading-relaxed">Secure access to the Vitreous Clinic Deployment System.</p>
-          <button 
+          <p className="text-[var(--text-muted)] mb-10 text-sm leading-relaxed">A calmer way to coordinate clinic schedules and support your team.</p>
+          <button
             onClick={signIn}
-            className="w-full bg-[var(--text)] text-[var(--bg)] font-bold py-4 rounded-2xl hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+            className="w-full bg-[#258c3b] text-white font-bold py-4 rounded-full hover:bg-[#243078] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
           >
             <Users className="w-5 h-5" />
             Authenticate with Google
@@ -1231,72 +1232,68 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-white/20">
       {/* Immersive Background */}
-      <div className="fixed inset-0 pointer-events-none z-[-1]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(40,60,100,0.15)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(100,40,60,0.1)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 backdrop-blur-[100px]" />
-      </div>
+      <div className="fixed inset-0 pointer-events-none z-[-1] bg-[#f0f2f7]" />
       
       {/* Navigation Rail */}
-      <nav className="fixed left-0 top-0 bottom-0 w-24 bg-[var(--nav-bg)] backdrop-blur-3xl border-r border-[var(--border)] flex flex-col items-center py-10 gap-10 z-50">
+      <nav className="brand-nav fixed left-0 right-0 top-0 h-16 md:h-20 bg-[#243078] text-white flex items-center px-3 md:px-8 gap-2 md:gap-8 z-50 shadow-[0_6px_24px_rgba(36,48,120,0.18)]">
         <motion.div 
           whileHover={{ scale: 1.05 }}
-          className="w-12 h-12 bg-[var(--glass)] rounded-2xl flex items-center justify-center border border-[var(--border)] shadow-lg cursor-pointer"
+          className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer shrink-0"
         >
-          <LayoutDashboard className="w-6 h-6" />
+          <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6 text-[#243078]" />
         </motion.div>
         
-        <div className="flex-1 flex flex-col gap-8">
+        <div className="flex-1 flex items-center gap-3">
           <button 
             onClick={() => setViewMode('admin')}
-            className={`p-4 rounded-2xl transition-all group relative ${viewMode === 'admin' ? 'text-[var(--text)] bg-[var(--glass)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--glass-hover)]'}`}
+            className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'admin' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
-            <LayoutDashboard className="w-6 h-6" />
-            <div className="absolute left-full ml-4 px-3 py-1 bg-[var(--text)] text-[var(--bg)] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-              ADMIN_DASHBOARD
+            <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+              Schedule workspace
             </div>
           </button>
 
           <button 
             onClick={() => setViewMode('technician')}
-            className={`p-4 rounded-2xl transition-all group relative ${viewMode === 'technician' ? 'text-[var(--text)] bg-[var(--glass)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--glass-hover)]'}`}
+            className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'technician' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
-            <Calendar className="w-6 h-6" />
-            <div className="absolute left-full ml-4 px-3 py-1 bg-[var(--text)] text-[var(--bg)] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-              TECH_VIEW
+            <Calendar className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+              My weekly schedule
             </div>
           </button>
 
           {isAdmin && (
             <button 
               onClick={() => setShowSettings(true)}
-              className="p-4 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--glass-hover)] rounded-2xl transition-all group relative"
+              className="p-2 md:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all group relative"
             >
-              <Settings className="w-6 h-6" />
-              <div className="absolute left-full ml-4 px-3 py-1 bg-[var(--text)] text-[var(--bg)] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                SYSTEM_SETTINGS
+              <Settings className="w-5 h-5 md:w-6 md:h-6" />
+              <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+                Settings
               </div>
             </button>
           )}
 
           <button 
             onClick={() => setShowGemini(true)}
-            className={`p-4 rounded-2xl transition-all group relative ${showGemini ? 'text-emerald-400 bg-emerald-500/10' : 'text-[var(--text-muted)] hover:text-emerald-400 hover:bg-emerald-500/10'}`}
+              className={`p-2 md:p-3 rounded-full transition-all group relative ${showGemini ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
-            <Sparkles className="w-6 h-6" />
-            <div className="absolute left-full ml-4 px-3 py-1 bg-emerald-500 text-black text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-              GEMINI_AI_INSIGHTS
+            <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+              Schedule assistant
             </div>
           </button>
 
           {isAdmin && (
             <button 
               onClick={() => setShowLogs(true)}
-              className={`p-4 rounded-2xl transition-all group relative ${showLogs ? 'text-blue-400 bg-blue-500/10' : 'text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10'}`}
+              className={`p-2 md:p-3 rounded-full transition-all group relative ${showLogs ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
             >
-              <History className="w-6 h-6" />
-              <div className="absolute left-full ml-4 px-3 py-1 bg-blue-500 text-black text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                CHANGE_LOGS
+              <History className="w-5 h-5 md:w-6 md:h-6" />
+              <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+                Change history
               </div>
             </button>
           )}
@@ -1304,26 +1301,25 @@ export default function App() {
 
         <button 
           onClick={signOut}
-          className="p-4 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-2xl transition-all"
+          className="p-2 md:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
         >
-          <LogOut className="w-6 h-6" />
+          <LogOut className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       </nav>
 
       {/* Main Viewport */}
-      <main className="pl-24 p-8 max-w-[2400px] mx-auto min-h-screen flex flex-col">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8">
+      <main className="brand-main pt-20 md:pt-28 px-4 md:px-8 pb-10 max-w-[2400px] mx-auto min-h-screen flex flex-col text-[#243078]">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 bg-white border border-[#dce1eb] rounded-3xl p-7 shadow-[0_8px_24px_rgba(36,48,120,0.06)]">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <span className="px-2 py-0.5 bg-[var(--accent-muted)] text-[var(--accent)] text-[0.5rem] font-bold rounded border border-[var(--accent-muted)] tracking-widest uppercase">
                 {viewMode === 'admin' ? 'Admin Access' : 'Technician View'}
               </span>
-              <span className="text-[0.6rem] font-mono text-[var(--text-muted)] uppercase tracking-[0.3em]">Vitreous_v5.0.0_WEEKLY</span>
+              <span className="text-[0.65rem] text-[var(--text-muted)] tracking-[0.08em]">Thoughtful scheduling for every team</span>
             </div>
-            <h1 className="text-4xl font-mono font-bold tracking-tighter flex items-baseline gap-4">
-              {viewMode === 'admin' ? 'SPINDEL_SCHEDULER' : 'PERSONAL_WEEKLY_SCHEDULE'} 
-              <span className="text-[var(--text-muted)] text-xl font-light opacity-20">//</span> 
-              <span className="text-[var(--text-muted)]">{selectedWeek.label.toUpperCase()}</span>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight flex flex-wrap items-baseline gap-3 text-[#243078]">
+              {viewMode === 'admin' ? 'Spindel Scheduler' : 'My Weekly Schedule'}
+              <span className="text-[#258c3b] text-xl font-medium">{selectedWeek.label}</span>
             </h1>
             <div className="flex items-center gap-4 text-[var(--text-muted)] font-mono text-xs">
               <button 
@@ -1338,7 +1334,7 @@ export default function App() {
           </div>
           
           <div className="flex flex-col items-end gap-6 w-full md:w-auto">
-            <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
               {viewMode === 'technician' ? (
                 <div className="relative flex-1 md:w-64">
                   <select 
@@ -1346,9 +1342,9 @@ export default function App() {
                     onChange={(e) => setSelectedTech(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-4 pr-10 text-xs font-mono focus:outline-none focus:border-white/30 transition-all appearance-none"
                   >
-                    <option value="" className="bg-[#0a0c10]">SELECT_YOUR_NAME...</option>
+                    <option value="" className="bg-white">Select your name...</option>
                     {allTechNames.map(t => (
-                      <option key={t} value={t} className="bg-[#0a0c10]">{t}</option>
+                      <option key={t} value={t} className="bg-white">{t}</option>
                     ))}
                   </select>
                   <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
@@ -1368,7 +1364,7 @@ export default function App() {
 
               {viewMode === 'technician' && selectedTech && (
                 <button onClick={() => setShowTechProfile(true)} className="flex items-center gap-2 px-4 py-2.5 bg-pink-500/10 text-pink-300 border border-pink-500/20 rounded-xl text-[0.6rem] font-black tracking-widest hover:bg-pink-500/20 transition-all">
-                  <Heart className="w-3.5 h-3.5" /> MY_PROFILE
+                  <Heart className="w-3.5 h-3.5" /> My preferences
                 </button>
               )}
               
@@ -1382,7 +1378,7 @@ export default function App() {
                   className="bg-transparent text-[0.6rem] font-bold px-3 py-1 focus:outline-none"
                 >
                   {WEEKS.map(w => (
-                    <option key={w.id} value={w.id} className="bg-[#0a0c10]">{w.label}</option>
+                    <option key={w.id} value={w.id} className="bg-white">{w.label}</option>
                   ))}
                 </select>
               </div>
@@ -1390,10 +1386,10 @@ export default function App() {
               <button 
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="group flex items-center gap-3 bg-white text-black px-6 py-2.5 rounded-xl text-[0.7rem] font-bold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-[0_10px_20px_rgba(255,255,255,0.1)]"
+                className="brand-primary group flex items-center gap-3 px-6 py-2.5 rounded-full text-sm font-bold transition-all hover:brightness-90 active:scale-[0.98] disabled:opacity-50 shadow-md"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                {isSyncing ? 'SYNCING_DATA' : 'SYNC_MIRROR'}
+                {isSyncing ? 'Syncing schedule…' : 'Sync schedule'}
               </button>
             </div>
           </div>
@@ -1556,7 +1552,7 @@ export default function App() {
 
             {/* Weekly Matrix Grid */}
             {isAdmin && (
-              <div className="mb-8 flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-3xl">
+              <div className="mb-8 flex items-center gap-4 bg-white border border-[#dce1eb] p-4 rounded-2xl shadow-sm">
                 <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
                   <Terminal className="w-5 h-5 text-emerald-400" />
                 </div>
@@ -1566,7 +1562,7 @@ export default function App() {
                     value={commandInput}
                     onChange={(e) => setCommandInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && executeCommand()}
-                    placeholder="ENTER_NATURAL_LANGUAGE_COMMAND (e.g. 'Move LT to Windham on Monday')"
+                    placeholder="Ask for a schedule change, e.g. “Move LT to Windham on Monday”"
                     className="w-full bg-transparent border-none text-xs font-mono focus:outline-none placeholder:text-white/10"
                     disabled={isProcessingCommand}
                   />
@@ -1582,7 +1578,7 @@ export default function App() {
                   disabled={!commandInput.trim() || isProcessingCommand}
                   className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[0.6rem] font-black uppercase tracking-widest transition-all disabled:opacity-30"
                 >
-                  EXECUTE
+                  Review change
                 </button>
               </div>
             )}
@@ -1593,10 +1589,88 @@ export default function App() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex-1 overflow-x-auto pb-8">
+              {/* Mobile day-focused schedule */}
+              <div className="md:hidden space-y-5">
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
+                  {allSchedules.map((day, index) => (
+                    <button
+                      key={`${day.dayName}-${index}`}
+                      onClick={() => setSelectedDayIdx(index)}
+                      className={`snap-start shrink-0 px-4 py-3 rounded-2xl border text-left transition-all ${selectedDayIdx === index ? 'brand-primary border-[#258c3b] shadow-md' : 'bg-white border-[#dce1eb] text-[#243078]'}`}
+                    >
+                      <span className="block text-xs font-bold">{day.dayName}</span>
+                      <span className={`block text-[0.65rem] mt-0.5 ${selectedDayIdx === index ? 'text-white/80' : 'text-[#667085]'}`}>{day.date}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const mobileDay = allSchedules[selectedDayIdx];
+                  if (!mobileDay) return null;
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-end justify-between px-1">
+                        <div>
+                          <p className="text-xs text-[#667085]">Daily schedule</p>
+                          <h2 className="text-2xl font-semibold text-[#243078]">{mobileDay.dayName}, {mobileDay.date}</h2>
+                        </div>
+                        <span className="text-xs text-[#667085]">Tap a name to edit</span>
+                      </div>
+
+                      {LOCATIONS.map(loc => {
+                        const mobileAssignments = mobileDay.locations[loc.id] || [];
+                        if (mobileAssignments.length === 0 && loc.targetTechs === 0) return null;
+                        const mobileDoctors = mobileAssignments.filter(item => item.isDoctor);
+                        const mobileTechs = mobileAssignments.filter(item => !item.isDoctor);
+                        const shortage = Math.max(0, loc.targetTechs - mobileTechs.length);
+                        const suggestion = shortage > 0 ? rankMoveCandidates(mobileDay, loc.id, technicianProfiles)[0] : undefined;
+
+                        return (
+                          <section key={loc.id} className="schedule-card rounded-2xl p-4">
+                            <div className="flex items-center justify-between gap-3 mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: `${loc.color}20`, color: loc.color }}>{loc.code}</div>
+                                <div>
+                                  <h3 className="font-semibold text-[#243078]">{loc.id}</h3>
+                                  <p className="text-xs text-[#667085]">{mobileDoctors.length} doctor{mobileDoctors.length === 1 ? '' : 's'} · {mobileTechs.length} technician{mobileTechs.length === 1 ? '' : 's'}</p>
+                                </div>
+                              </div>
+                              {shortage > 0 ? <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">Needs {shortage}</span> : loc.targetTechs > 0 ? <span className="px-2.5 py-1 bg-green-50 text-[#258c3b] border border-green-200 rounded-full text-xs font-bold">Covered</span> : null}
+                            </div>
+
+                            {mobileAssignments.length > 0 ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                {mobileAssignments.map((assignment, assignmentIndex) => (
+                                  <button
+                                    key={`${assignment.person}-${assignmentIndex}`}
+                                    onClick={() => setEditingAssignment({ assignment, locationId: loc.id, index: assignmentIndex })}
+                                    className={`min-h-12 px-3 py-2 rounded-xl border text-left ${assignment.isDoctor ? 'brand-doctor border-[#243078]' : 'bg-[#f7f8fb] text-[#3f3f3f] border-[#dce1eb]'}`}
+                                  >
+                                    <span className="block font-bold text-sm">{assignment.person}</span>
+                                    <span className={`block text-[0.65rem] mt-0.5 ${assignment.isDoctor ? 'text-white/70' : 'text-[#667085]'}`}>{assignment.isDoctor ? 'Doctor' : `${assignment.startTime || '--'} – ${assignment.endTime || '--'}`}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : <p className="text-sm text-[#667085] py-2">No one assigned yet.</p>}
+
+                            {suggestion && (
+                              <button onClick={() => setCommandInput(`Move ${suggestion.technician} from ${suggestion.fromLocation} to ${loc.id} on ${mobileDay.dayName}`)} className="mt-4 w-full flex items-center justify-between gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-left">
+                                <div><span className="block text-[0.65rem] font-bold text-[#258c3b]">Suggested coverage</span><span className="block text-sm font-medium text-[#243078]">{suggestion.technician} from {suggestion.fromLocation}</span></div>
+                                <ArrowRight className="w-4 h-4 text-[#258c3b] shrink-0" />
+                              </button>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="hidden md:block flex-1 overflow-x-auto pb-8">
                 <div className="min-w-[1600px] flex flex-col gap-6">
             {/* Days Header */}
-            <div className="grid grid-cols-[180px_repeat(6,1fr)] gap-4 sticky top-0 z-20 bg-[#05070a]/80 backdrop-blur-xl py-4 border-b border-white/5">
+            <div className="grid grid-cols-[180px_repeat(6,1fr)] gap-4 sticky top-20 z-20 bg-[#f0f2f7]/95 backdrop-blur-xl py-4 border-b border-[#dce1eb]">
               <div className="flex items-center justify-center">
                 <span className="text-[0.6rem] font-black uppercase tracking-[0.4em] text-white/20">Locations</span>
               </div>
@@ -1621,7 +1695,7 @@ export default function App() {
                 return (
                   <div key={loc.id} className="grid grid-cols-[180px_repeat(6,1fr)] gap-4 min-h-[120px]">
                     {/* Location Label */}
-                    <div className="flex flex-col items-center justify-center bg-white/[0.02] border border-white/5 rounded-3xl p-4 gap-3">
+                    <div className="schedule-card flex flex-col items-center justify-center rounded-2xl p-4 gap-3">
                     <div 
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shadow-lg"
                       style={{ backgroundColor: loc.color, color: '#000' }}
@@ -1668,7 +1742,7 @@ export default function App() {
                         <DroppableLocation 
                           key={cellId}
                           id={cellId}
-                          className={`bg-white/[0.01] border border-white/5 rounded-3xl p-3 flex flex-col gap-3 transition-all hover:bg-white/[0.03] ${overstaffed.length === 0 && activeFloating.length === 0 ? 'opacity-30' : ''}`}
+                          className={`schedule-card rounded-2xl p-3 flex flex-col gap-3 transition-all hover:-translate-y-0.5 ${overstaffed.length === 0 && activeFloating.length === 0 ? 'opacity-50' : ''}`}
                         >
                           {overstaffed.length > 0 && (
                             <div className="space-y-2">
@@ -1732,7 +1806,7 @@ export default function App() {
                       <DroppableLocation 
                         key={cellId}
                         id={cellId}
-                        className={`bg-white/[0.01] border border-white/5 rounded-3xl p-3 flex flex-col gap-3 transition-all hover:bg-white/[0.03] ${assignments.length === 0 ? 'opacity-30' : ''}`}
+                        className={`schedule-card rounded-2xl p-3 flex flex-col gap-3 transition-all hover:-translate-y-0.5 ${assignments.length === 0 ? 'opacity-50' : ''}`}
                       >
                         {/* Doctors */}
                         {doctors.length > 0 && (
@@ -1741,7 +1815,7 @@ export default function App() {
                               <button
                                 key={`${a.person}-${aIdx}`}
                                 onClick={() => viewMode === 'admin' && setEditingAssignment({ assignment: a, locationId: loc.id, index: assignments.indexOf(a) })}
-                                className={`px-2 py-1 bg-white text-black rounded-lg text-[0.6rem] font-black tracking-tighter transition-transform ${viewMode === 'admin' ? 'hover:scale-105' : 'cursor-default'}`}
+                                className={`brand-doctor px-2 py-1 rounded-lg text-[0.6rem] font-black tracking-tighter transition-transform ${viewMode === 'admin' ? 'hover:scale-105' : 'cursor-default'}`}
                                 title={`${a.person} (${a.startTime}-${a.endTime}) ${a.status || ''}`}
                               >
                                 {a.person}
@@ -1826,16 +1900,15 @@ export default function App() {
         {/* Dynamic Status Bar */}
         <footer className="mt-16 flex justify-between items-center text-[0.6rem] font-mono text-white/20 tracking-[0.2em] uppercase border-t border-white/5 pt-8">
           <div className="flex gap-8">
-            <span>LOC_SYNC: {isSyncing ? 'SYNCING' : 'ACTIVE'}</span>
-            <span>DATA_FLOW: STABLE</span>
-            <span>ENCRYPTION: VITREOUS_v4.2</span>
+            <span>Schedule sync: {isSyncing ? 'In progress' : 'Up to date'}</span>
+            <span>Team planning ready</span>
           </div>
           <div className="flex gap-8">
             <span className="flex items-center gap-2">
               <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
-              SERVER_LATENCY: 24MS
+              Connected
             </span>
-            <span>© 2026 VITREOUS_OPS</span>
+            <span>© 2026 Spindel Eye Associates</span>
           </div>
         </footer>
       </main>
@@ -1864,14 +1937,14 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="relative w-full max-w-xl bg-[#0a0c10] border border-white/10 rounded-[2.5rem] p-12 shadow-[0_30px_60px_rgba(0,0,0,0.5)] overflow-hidden"
+              className="brand-surface relative w-full max-w-xl bg-white border border-[#dce1eb] rounded-3xl p-10 shadow-[0_30px_60px_rgba(36,48,120,0.16)] overflow-hidden"
             >
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               
               <div className="flex justify-between items-center mb-10">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight mb-1">System Configuration</h2>
-                  <p className="text-xs text-white/30 font-mono uppercase tracking-widest">Core_Settings_v4.2</p>
+                  <h2 className="text-2xl font-semibold tracking-tight mb-1">Settings</h2>
+                  <p className="text-xs text-white/40">Schedule preferences and integrations</p>
                 </div>
                 <button onClick={() => setShowSettings(false)} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
                   <X className="w-6 h-6 text-white/40" />
@@ -1988,7 +2061,7 @@ export default function App() {
                     onClick={saveSettings}
                     className="w-full bg-white text-black font-bold py-5 rounded-2xl hover:bg-white/90 transition-all active:scale-[0.98] shadow-[0_20px_40px_rgba(255,255,255,0.1)]"
                   >
-                    SAVE_CHANGES & REBOOT_SYNC
+                    Save changes and refresh
                   </button>
                 </div>
               </div>
@@ -2014,7 +2087,7 @@ export default function App() {
             initial={{ opacity: 0, x: 400 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 400 }}
-            className="fixed right-0 top-0 bottom-0 w-[450px] bg-[#05070a]/95 backdrop-blur-3xl border-l border-white/10 z-[100] flex flex-col shadow-2xl"
+            className="brand-surface fixed right-0 top-0 bottom-0 w-[450px] bg-white border-l border-[#dce1eb] z-[100] flex flex-col shadow-2xl"
           >
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
               <div className="flex items-center gap-3">
@@ -2022,8 +2095,8 @@ export default function App() {
                   <History className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold tracking-tight text-white">CHANGE_LOGS</h2>
-                  <p className="text-[0.6rem] font-mono text-white/40 uppercase tracking-widest">Last 5 Days of Activity</p>
+                  <h2 className="text-sm font-bold tracking-tight text-white">Change history</h2>
+                  <p className="text-[0.6rem] text-white/40">Activity from the last five days</p>
                 </div>
               </div>
               <button 
@@ -2051,9 +2124,8 @@ export default function App() {
 
       {/* Crosshair Cursor & Global Styles */}
       <style>{`
-        body {
-          cursor: crosshair;
-        }
+        body { cursor: default; }
+        button, a, select { cursor: pointer; }
         * {
           scrollbar-width: none;
         }

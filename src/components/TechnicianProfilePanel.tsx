@@ -47,7 +47,7 @@ export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, o
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <button aria-label="Close profile" onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0c10] border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+      <motion.div initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} className="brand-surface relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-[#dce1eb] rounded-3xl p-8 shadow-2xl">
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-2 text-pink-400 text-[0.6rem] font-black tracking-[.25em] uppercase mb-2"><Heart className="w-4 h-4" /> Happy schedule profile</div>

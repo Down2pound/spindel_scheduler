@@ -1,31 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Roboto", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
-  --bg: #05070a;
-  --text: #ffffff;
-  --text-muted: rgba(255, 255, 255, 0.4);
-  --glass: rgba(255, 255, 255, 0.03);
-  --glass-hover: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.08);
-  --accent: #10b981; /* emerald-500 */
-  --accent-muted: rgba(16, 185, 129, 0.2);
-  --nav-bg: rgba(0, 0, 0, 0.4);
+  --bg: #f0f2f7;
+  --text: #243078;
+  --text-muted: #667085;
+  --glass: #ffffff;
+  --glass-hover: #f7f8fb;
+  --border: #dce1eb;
+  --accent: #258c3b;
+  --accent-muted: rgba(37, 140, 59, 0.12);
+  --nav-bg: #243078;
+  --brand-navy: #243078;
+  --brand-green: #258c3b;
+  --brand-pale: #f0f2f7;
+  --brand-ink: #3f3f3f;
 }
 
 [data-theme='light'] {
-  --bg: #f8fafc;
-  --text: #0f172a;
-  --text-muted: rgba(15, 23, 42, 0.5);
+  --bg: #f7f4f2;
+  --text: #29242d;
+  --text-muted: rgba(41, 36, 45, 0.6);
   --glass: rgba(255, 255, 255, 0.8);
   --glass-hover: rgba(255, 255, 255, 1);
   --border: rgba(15, 23, 42, 0.1);
-  --accent: #0ea5e9; /* sky-500 */
-  --accent-muted: rgba(14, 165, 233, 0.1);
+  --accent: #8b5e83;
+  --accent-muted: rgba(139, 94, 131, 0.12);
   --nav-bg: rgba(255, 255, 255, 0.8);
 }
 
@@ -58,4 +62,42 @@ body {
   color: var(--text);
   transition: background-color 0.3s ease, color 0.3s ease;
   overflow-x: hidden;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Poppins", sans-serif;
+}
+
+.brand-main [class*="text-white/"] { color: #667085 !important; }
+.brand-main .text-white { color: #243078 !important; }
+.brand-main [class*="bg-white/"] { background-color: #ffffff !important; }
+.brand-main [class*="border-white/"] { border-color: #dce1eb !important; }
+.brand-main [class*="hover:bg-white/"]:hover { background-color: #f7f8fb !important; }
+.brand-main .brand-primary { background-color: #258c3b !important; color: #ffffff !important; }
+.brand-main .brand-doctor { background-color: #243078 !important; color: #ffffff !important; }
+.brand-main .schedule-card {
+  background: #ffffff;
+  border: 1px solid #dce1eb;
+  box-shadow: 0 8px 24px rgba(36, 48, 120, 0.06);
+}
+.brand-surface { background: #ffffff !important; color: #243078 !important; border-color: #dce1eb !important; }
+.brand-surface [class*="text-white/"] { color: #667085 !important; }
+.brand-surface .text-white { color: #243078 !important; }
+.brand-surface [class*="bg-white/"] { background-color: #f7f8fb !important; }
+.brand-surface [class*="border-white/"] { border-color: #dce1eb !important; }
+.brand-surface input, .brand-surface select, .brand-surface textarea { color: #243078; }
+
+@media (max-width: 767px) {
+  .brand-nav { overflow-x: auto; padding-inline: 1rem !important; }
+  .brand-main { padding-inline: 1rem !important; }
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }

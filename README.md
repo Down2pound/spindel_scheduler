@@ -2,6 +2,8 @@
 
 Spindel Scheduler is a Vite + React technician scheduling app for mirroring clinic schedules from Google Sheets, validating doctor/technician constraints, and using Gemini for scheduling analysis and admin commands.
 
+The interface follows the public Spindel Eye Associates brand system: navy `#243078`, green `#258c3b`, cool gray `#f0f2f7`, Poppins headings, and Roboto body typography. The responsive workspace uses a high-contrast top navigation, bright clinical surfaces, rounded cards, clear focus states, and plain-language controls. Desktop screens use the full six-day scheduling matrix; mobile screens use a day-focused view with swipeable day navigation, large tap targets, location coverage summaries, and reviewable move suggestions.
+
 ## Current Status
 
 Recent fixes on `main` include:

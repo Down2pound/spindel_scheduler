@@ -69,7 +69,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, technici
       initial={{ opacity: 0, x: 400 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 400 }}
-      className="fixed right-0 top-0 bottom-0 w-[450px] bg-[#05070a]/95 backdrop-blur-3xl border-l border-white/10 z-[100] flex flex-col shadow-2xl"
+      className="brand-surface fixed right-0 top-0 bottom-0 w-full sm:w-[450px] bg-white border-l border-[#dce1eb] z-[100] flex flex-col shadow-2xl"
     >
       {/* Header */}
       <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
@@ -78,7 +78,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, technici
             <Sparkles className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <h2 className="text-sm font-bold tracking-tight text-white">GEMINI_AI_INSIGHTS</h2>
+            <h2 className="text-sm font-bold tracking-tight text-white">Schedule Assistant</h2>
             <p className="text-[0.6rem] font-mono text-white/40 uppercase tracking-widest">Clinic Operations Assistant</p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, technici
         {/* Analysis Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-[0.65rem] font-black uppercase tracking-[0.3em] text-white/30">Weekly_Analysis</h3>
+            <h3 className="text-[0.65rem] font-bold tracking-wider text-white/40">Weekly analysis</h3>
             <button 
               onClick={handleAnalyze}
               disabled={isAnalyzing}
@@ -124,7 +124,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, technici
 
         {/* Chat Section */}
         <section className="space-y-4 flex flex-col h-[400px]">
-          <h3 className="text-[0.65rem] font-black uppercase tracking-[0.3em] text-white/30">Interactive_Assistant</h3>
+          <h3 className="text-[0.65rem] font-bold tracking-wider text-white/40">Ask the assistant</h3>
           
           <div className="flex-1 bg-black/40 rounded-2xl border border-white/5 p-4 overflow-y-auto space-y-4 flex flex-col">
             {messages.length === 0 && !isTyping && (
