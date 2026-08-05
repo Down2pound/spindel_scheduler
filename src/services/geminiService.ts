@@ -3,7 +3,13 @@ import { SheetDaySchedule } from "./sheetService";
 import { Doctor } from "../constants/doctors";
 import { Technician } from "../constants/technicians";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
 
 export interface ScheduleAction {
   action: 'MOVE' | 'ADD' | 'REMOVE' | 'UPDATE_TIME' | 'UPDATE_CONSTRAINT' | 'UNKNOWN';
@@ -69,6 +75,7 @@ export async function processScheduleCommand(command: string, currentSchedule: S
   }
 
   try {
+    const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
       You are a clinic schedule manager. Interpret the following natural language command and convert it into a structured action.
@@ -137,6 +144,7 @@ export async function analyzeSchedule(scheduleData: SheetDaySchedule[]): Promise
   }
 
   try {
+    const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
       You are an expert clinic operations analyst. Analyze the following clinic schedule data for the week.
@@ -175,6 +183,7 @@ export async function chatWithGemini(message: string, scheduleData: SheetDaySche
   }
 
   try {
+    const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
       You are the Spindel Scheduler Assistant. You have access to the current clinic schedule.

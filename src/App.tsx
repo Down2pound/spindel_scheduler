@@ -666,14 +666,25 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    initializeConstraints();
-    const unsubDoctors = subscribeToDoctors(setDoctors);
-    const unsubTechs = subscribeToTechnicians(setTechnicians);
+    if (!user) return;
+
+    if (isAdmin) {
+      initializeConstraints().catch((err) => {
+        console.error('Failed to initialize constraints:', err);
+      });
+    }
+
+    const handleConstraintError = (err: Error) => {
+      console.error('Failed to load schedule constraints:', err);
+    };
+
+    const unsubDoctors = subscribeToDoctors(setDoctors, handleConstraintError);
+    const unsubTechs = subscribeToTechnicians(setTechnicians, handleConstraintError);
     return () => {
       unsubDoctors();
       unsubTechs();
     };
-  }, []);
+  }, [user, isAdmin]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -698,6 +709,8 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setLogs(newLogs);
+    }, (err) => {
+      console.error('Failed to load audit logs:', err);
     });
 
     // Cleanup logs older than 5 days
@@ -709,7 +722,9 @@ export default function App() {
         await deleteDoc(doc(db, 'audit_logs', logDoc.id));
       });
     };
-    cleanupLogs();
+    cleanupLogs().catch((err) => {
+      console.error('Failed to clean audit logs:', err);
+    });
 
     return unsubscribe;
   }, [user, isAdmin]);
@@ -861,12 +876,16 @@ export default function App() {
         const data = docSnap.data() as SheetDaySchedule;
         setSchedule(data);
       }
+    }, (err) => {
+      console.error(`Failed to load schedule ${scheduleId}:`, err);
     });
     
     return unsubscribe;
   }, [user, selectedWeek.id, schedule.dayName]);
 
   const handleSync = async () => {
+    if (!user) return;
+
     if (!sheetUrl) {
       setShowSettings(true);
       return;
@@ -900,8 +919,9 @@ export default function App() {
   }, [selectedDayIdx, allSchedules]);
 
   useEffect(() => {
+    if (!user) return;
     handleSync();
-  }, [selectedWeek]);
+  }, [user, selectedWeek]);
 
   const getStaffingStats = (locationId: string) => {
     const assignments = schedule.locations[locationId] || [];
