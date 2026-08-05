@@ -1232,7 +1232,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-white/20">
       {/* Immersive Background */}
-      <div className="fixed inset-0 pointer-events-none z-[-1] bg-[#f0f2f7]" />
+      <div className="fixed inset-0 pointer-events-none z-[-1] bg-[#e9edf5]" />
       
       {/* Navigation Rail */}
       <nav className="brand-nav fixed left-0 right-0 top-0 h-16 md:h-20 bg-[#243078] text-white flex items-center px-3 md:px-8 gap-2 md:gap-8 z-50 shadow-[0_6px_24px_rgba(36,48,120,0.18)]">
