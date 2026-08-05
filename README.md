@@ -110,6 +110,8 @@ The repository includes a GitHub Pages workflow that builds `main` with `BASE_PA
 https://down2pound.github.io/spindel_scheduler/
 ```
 
+Add `down2pound.github.io` to Firebase Authentication authorized domains before testing Google sign-in from this preview.
+
 Firebase Hosting:
 
 ```bash
