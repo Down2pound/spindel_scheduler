@@ -89,8 +89,79 @@ h1, h2, h3, h4, h5, h6 {
 .brand-surface input, .brand-surface select, .brand-surface textarea { color: #243078; }
 
 @media (max-width: 767px) {
-  .brand-nav { overflow-x: auto; padding-inline: 1rem !important; }
-  .brand-main { padding-inline: 1rem !important; }
+  .brand-nav {
+    top: auto !important;
+    bottom: 0;
+    height: calc(4.25rem + env(safe-area-inset-bottom));
+    padding: 0.5rem 0.75rem env(safe-area-inset-bottom) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 -8px 28px rgba(36, 48, 120, 0.2);
+  }
+  .brand-nav > .flex-1 {
+    justify-content: space-around;
+    gap: 0;
+  }
+  .brand-nav button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .brand-main {
+    padding: 1rem 0.875rem calc(6.25rem + env(safe-area-inset-bottom)) !important;
+  }
+  .mobile-hero {
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+    padding: 1.125rem !important;
+    border-radius: 1.25rem !important;
+  }
+  .mobile-hero .space-y-3 { width: 100%; }
+  .mobile-hero h1 {
+    font-size: 1.65rem !important;
+    line-height: 1.15;
+    gap: 0.4rem !important;
+  }
+  .mobile-hero h1 span { font-size: 0.95rem !important; }
+  .mobile-hero .tracking-\[0\.08em\] { display: none; }
+  .mobile-controls { gap: 0.75rem !important; }
+  .mobile-controls > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .mobile-controls .brand-primary { grid-column: 1 / -1; width: 100%; justify-content: center; }
+  .mobile-command {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.65rem !important;
+    margin-bottom: 1rem !important;
+    padding: 0.75rem !important;
+  }
+  .mobile-command > button { grid-column: 1 / -1; min-height: 2.75rem; }
+  .mobile-day-picker {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin-inline: -0.875rem;
+    padding: 0.65rem 0.875rem !important;
+    background: rgba(240, 242, 247, 0.96);
+    backdrop-filter: blur(12px);
+    scroll-padding-inline: 0.875rem;
+  }
+  .mobile-day-picker button { min-height: 3.25rem; padding: 0.6rem 0.9rem !important; }
+  .mobile-day-heading { align-items: flex-start !important; }
+  .mobile-day-heading > span { display: none; }
+  .mobile-modal {
+    padding: 1.25rem !important;
+    border-radius: 1.25rem !important;
+  }
+  .mobile-modal .mb-10 { margin-bottom: 1.5rem !important; }
+  .mobile-modal .space-y-10 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.5rem !important; }
+  .mobile-footer { display: none !important; }
+}
+
+@media (max-width: 374px) {
+  .mobile-assignment-grid { grid-template-columns: 1fr !important; }
+  .brand-nav { padding-inline: 0.35rem !important; }
+  .brand-nav button { min-width: 2.5rem; }
 }
 
 button, input, select, textarea {

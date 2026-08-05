@@ -1238,7 +1238,7 @@ export default function App() {
       <nav className="brand-nav fixed left-0 right-0 top-0 h-16 md:h-20 bg-[#243078] text-white flex items-center px-3 md:px-8 gap-2 md:gap-8 z-50 shadow-[0_6px_24px_rgba(36,48,120,0.18)]">
         <motion.div 
           whileHover={{ scale: 1.05 }}
-          className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer shrink-0"
+          className="hidden md:flex w-10 h-10 md:w-12 md:h-12 bg-white rounded-full items-center justify-center shadow-lg cursor-pointer shrink-0"
         >
           <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6 text-[#243078]" />
         </motion.div>
@@ -1246,6 +1246,7 @@ export default function App() {
         <div className="flex-1 flex items-center gap-3">
           <button 
             onClick={() => setViewMode('admin')}
+            aria-label="Schedule workspace"
             className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'admin' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
             <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6" />
@@ -1256,6 +1257,7 @@ export default function App() {
 
           <button 
             onClick={() => setViewMode('technician')}
+            aria-label="My weekly schedule"
             className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'technician' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
             <Calendar className="w-5 h-5 md:w-6 md:h-6" />
@@ -1267,6 +1269,7 @@ export default function App() {
           {isAdmin && (
             <button 
               onClick={() => setShowSettings(true)}
+              aria-label="Settings"
               className="p-2 md:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all group relative"
             >
               <Settings className="w-5 h-5 md:w-6 md:h-6" />
@@ -1278,6 +1281,7 @@ export default function App() {
 
           <button 
             onClick={() => setShowGemini(true)}
+            aria-label="Schedule assistant"
               className={`p-2 md:p-3 rounded-full transition-all group relative ${showGemini ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
           >
             <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
@@ -1289,6 +1293,7 @@ export default function App() {
           {isAdmin && (
             <button 
               onClick={() => setShowLogs(true)}
+              aria-label="Change history"
               className={`p-2 md:p-3 rounded-full transition-all group relative ${showLogs ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
             >
               <History className="w-5 h-5 md:w-6 md:h-6" />
@@ -1301,6 +1306,7 @@ export default function App() {
 
         <button 
           onClick={signOut}
+          aria-label="Sign out"
           className="p-2 md:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
         >
           <LogOut className="w-5 h-5 md:w-6 md:h-6" />
@@ -1309,7 +1315,7 @@ export default function App() {
 
       {/* Main Viewport */}
       <main className="brand-main pt-20 md:pt-28 px-4 md:px-8 pb-10 max-w-[2400px] mx-auto min-h-screen flex flex-col text-[#243078]">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 bg-white border border-[#dce1eb] rounded-3xl p-7 shadow-[0_8px_24px_rgba(36,48,120,0.06)]">
+        <header className="mobile-hero flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 bg-white border border-[#dce1eb] rounded-3xl p-7 shadow-[0_8px_24px_rgba(36,48,120,0.06)]">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <span className="px-2 py-0.5 bg-[var(--accent-muted)] text-[var(--accent)] text-[0.5rem] font-bold rounded border border-[var(--accent-muted)] tracking-widest uppercase">
@@ -1333,7 +1339,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex flex-col items-end gap-6 w-full md:w-auto">
+          <div className="mobile-controls flex flex-col items-end gap-6 w-full md:w-auto">
             <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
               {viewMode === 'technician' ? (
                 <div className="relative flex-1 md:w-64">
@@ -1552,7 +1558,7 @@ export default function App() {
 
             {/* Weekly Matrix Grid */}
             {isAdmin && (
-              <div className="mb-8 flex items-center gap-4 bg-white border border-[#dce1eb] p-4 rounded-2xl shadow-sm">
+              <div className="mobile-command mb-8 flex items-center gap-4 bg-white border border-[#dce1eb] p-4 rounded-2xl shadow-sm">
                 <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
                   <Terminal className="w-5 h-5 text-emerald-400" />
                 </div>
@@ -1591,7 +1597,7 @@ export default function App() {
             >
               {/* Mobile day-focused schedule */}
               <div className="md:hidden space-y-5">
-                <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
+                <div className="mobile-day-picker flex gap-2 overflow-x-auto pb-2 snap-x">
                   {allSchedules.map((day, index) => (
                     <button
                       key={`${day.dayName}-${index}`}
@@ -1609,7 +1615,7 @@ export default function App() {
                   if (!mobileDay) return null;
                   return (
                     <div className="space-y-4">
-                      <div className="flex items-end justify-between px-1">
+                      <div className="mobile-day-heading flex items-end justify-between px-1">
                         <div>
                           <p className="text-xs text-[#667085]">Daily schedule</p>
                           <h2 className="text-2xl font-semibold text-[#243078]">{mobileDay.dayName}, {mobileDay.date}</h2>
@@ -1639,7 +1645,7 @@ export default function App() {
                             </div>
 
                             {mobileAssignments.length > 0 ? (
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="mobile-assignment-grid grid grid-cols-2 gap-2">
                                 {mobileAssignments.map((assignment, assignmentIndex) => (
                                   <button
                                     key={`${assignment.person}-${assignmentIndex}`}
@@ -1898,7 +1904,7 @@ export default function App() {
         </div>
 
         {/* Dynamic Status Bar */}
-        <footer className="mt-16 flex justify-between items-center text-[0.6rem] font-mono text-white/20 tracking-[0.2em] uppercase border-t border-white/5 pt-8">
+        <footer className="mobile-footer mt-16 flex justify-between items-center text-[0.6rem] font-mono text-white/20 tracking-[0.2em] uppercase border-t border-white/5 pt-8">
           <div className="flex gap-8">
             <span>Schedule sync: {isSyncing ? 'In progress' : 'Up to date'}</span>
             <span>Team planning ready</span>
@@ -1937,7 +1943,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="brand-surface relative w-full max-w-xl bg-white border border-[#dce1eb] rounded-3xl p-10 shadow-[0_30px_60px_rgba(36,48,120,0.16)] overflow-hidden"
+              className="brand-surface mobile-modal relative w-full max-w-xl bg-white border border-[#dce1eb] rounded-3xl p-10 shadow-[0_30px_60px_rgba(36,48,120,0.16)] overflow-y-auto max-h-[calc(100dvh-2rem)]"
             >
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               
@@ -2087,7 +2093,7 @@ export default function App() {
             initial={{ opacity: 0, x: 400 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 400 }}
-            className="brand-surface fixed right-0 top-0 bottom-0 w-[450px] bg-white border-l border-[#dce1eb] z-[100] flex flex-col shadow-2xl"
+            className="brand-surface fixed right-0 top-0 bottom-0 w-full md:w-[450px] bg-white border-l border-[#dce1eb] z-[100] flex flex-col shadow-2xl"
           >
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
               <div className="flex items-center gap-3">
