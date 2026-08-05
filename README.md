@@ -7,7 +7,7 @@ Spindel Scheduler is a Vite + React technician scheduling app for mirroring clin
 Recent fixes on `main` include:
 
 - role-aware Google Sheet parsing, so `Doctor` / `Tech` sections determine whether ambiguous initials are parsed as doctors or technicians
-- parser regression coverage via `pnpm run test:parser`
+- parser regression coverage via `npm exec --yes --package=pnpm@10.25.0 -- pnpm run test:parser`
 - safer Gemini command validation before schedule changes are applied
 - Gemini panel error handling so the UI does not get stuck while analyzing or chatting
 - production build polish for app metadata, font loading, and expected bundle size
@@ -15,12 +15,10 @@ Recent fixes on `main` include:
 - GitHub Actions CI for parser tests, type-checking, and production builds on pushes and pull requests
 - static host configs for Firebase Hosting, Netlify, and Vercel
 
-A larger admin UI patch for AI add/remove commands and drag/edit state handling is available at `patches/spindel-app-command-dnd.patch`. It was verified locally, but is kept as a patch file so it can be applied from a normal Git checkout.
-
 ## Requirements
 
 - Node.js 20 or newer
-- pnpm 11.9.0 or newer, usually through Corepack
+- pnpm 10.25.0, or use the `npm exec` commands shown below
 - Firebase project access for the configured app
 - Gemini API key
 - Google Sheet published to the web as CSV, or a shareable Sheet URL that can be exported as CSV
@@ -30,8 +28,7 @@ A larger admin UI patch for AI add/remove commands and drag/edit state handling 
 ```bash
 git clone https://github.com/Down2pound/spindel_scheduler.git
 cd spindel_scheduler
-corepack enable
-pnpm install --frozen-lockfile
+npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
@@ -45,7 +42,7 @@ APP_URL="http://localhost:3000"
 Start the app:
 
 ```bash
-pnpm run dev
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run dev
 ```
 
 Open the local URL printed by Vite, usually `http://localhost:3000`.
@@ -55,9 +52,9 @@ Open the local URL printed by Vite, usually `http://localhost:3000`.
 Run these before deployment:
 
 ```bash
-pnpm run test:parser
-pnpm run lint
-pnpm run build
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run test:parser
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run lint
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run build
 ```
 
 The repository includes `pnpm-workspace.yaml` so trusted dependency build scripts can run noninteractively during install.
@@ -89,12 +86,12 @@ Before production deployment, confirm:
 
 1. Pull latest `main` on the deployment machine.
 2. Check GitHub Actions for a passing CI run, or run the verification commands locally.
-3. Install dependencies with `corepack enable` and `pnpm install --frozen-lockfile`.
+3. Install dependencies with `npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile`.
 4. Create `.env.local` with the Gemini key.
-5. Run `pnpm run test:parser`.
-6. Run `pnpm run lint`.
-7. Run `pnpm run build`.
-8. Smoke test `pnpm run dev` with Google sign-in and Sheet sync.
+5. Run `npm exec --yes --package=pnpm@10.25.0 -- pnpm run test:parser`.
+6. Run `npm exec --yes --package=pnpm@10.25.0 -- pnpm run lint`.
+7. Run `npm exec --yes --package=pnpm@10.25.0 -- pnpm run build`.
+8. Smoke test `npm exec --yes --package=pnpm@10.25.0 -- pnpm run dev` with Google sign-in and Sheet sync.
 9. Confirm Firestore reads/writes work for admin schedule edits.
 10. Deploy through the chosen host.
 11. Set production environment variables in the host dashboard.
@@ -102,7 +99,7 @@ Before production deployment, confirm:
 
 ## Deployment Options
 
-This is a static Vite app after `pnpm run build`, so any static host that serves `dist` works.
+This is a static Vite app after the production build, so any static host that serves `dist` works.
 
 Firebase Hosting:
 
@@ -110,10 +107,9 @@ Firebase Hosting:
 npm install -g firebase-tools
 firebase login
 firebase use --add
-corepack enable
-pnpm install --frozen-lockfile
-pnpm run build
-firebase deploy --only hosting
+npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run build
+firebase deploy --only hosting,firestore:rules
 ```
 
 Netlify CLI:
@@ -121,9 +117,8 @@ Netlify CLI:
 ```bash
 npm install -g netlify-cli
 netlify login
-corepack enable
-pnpm install --frozen-lockfile
-pnpm run build
+npm exec --yes --package=pnpm@10.25.0 -- pnpm install --frozen-lockfile
+npm exec --yes --package=pnpm@10.25.0 -- pnpm run build
 netlify deploy --prod --dir=dist
 ```
 
@@ -135,20 +130,11 @@ vercel login
 vercel --prod
 ```
 
-For dashboard-based deploys, use `pnpm run build` as the build command and `dist` as the publish/output directory.
+For dashboard-based deploys, use the repository host config when possible. The checked-in Netlify and Vercel configs install with `pnpm@10.25.0`, run the production build, and publish `dist`.
 
-## Optional Admin Patch
+## Admin Scheduling Tools
 
-Apply the prepared `src/App.tsx` patch if you want the admin command executor to support the full advertised behavior:
-
-```bash
-git apply --ignore-whitespace patches/spindel-app-command-dnd.patch
-pnpm run lint
-pnpm run test:parser
-pnpm run build
-```
-
-The patch adds:
+The admin scheduler includes:
 
 - `ADD` commands
 - `REMOVE` commands
