@@ -4,6 +4,8 @@ export interface Technician {
   aliases?: string[];
   conditionalPairing?: { doctor: string; day: string; location: string }[];
   softConstraints?: { type: string; doctor: string; message: string }[];
+  officeRanking?: string[];
+  commuteMiles?: Record<string, number>;
 }
 
 export const TECHNICIANS: Record<string, Technician> = {

@@ -4,10 +4,12 @@ import { Sparkles, X, Send, RefreshCw, AlertCircle, Bot, User } from 'lucide-rea
 import { analyzeSchedule, chatWithGemini } from '../services/geminiService';
 import { SheetDaySchedule } from '../services/sheetService';
 import ReactMarkdown from 'react-markdown';
+import { TechnicianProfile } from '../services/technicianProfileService';
 
 interface GeminiPanelProps {
   scheduleData: SheetDaySchedule[];
   onClose: () => void;
+  technicianProfiles?: Record<string, TechnicianProfile>;
 }
 
 interface Message {
@@ -15,8 +17,8 @@ interface Message {
   content: string;
 }
 
-export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose }) => {
-  const [analysis, setAnalysis] = useState<string>('');
+export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, technicianProfiles = {}, onClose }) => {
+  const [analysis, setAnalysis] = useState<string>('Select Analyze when you want an AI narrative. Local staffing and move recommendations do not require an AI call.');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -26,7 +28,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
-      const result = await analyzeSchedule(scheduleData);
+      const result = await analyzeSchedule(scheduleData, technicianProfiles);
       setAnalysis(result);
     } catch (error) {
       console.error('Gemini analysis failed:', error);
@@ -35,10 +37,6 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose 
       setIsAnalyzing(false);
     }
   };
-
-  useEffect(() => {
-    handleAnalyze();
-  }, [scheduleData]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,7 +51,7 @@ export const GeminiPanel: React.FC<GeminiPanelProps> = ({ scheduleData, onClose 
     setIsTyping(true);
 
     try {
-      const response = await chatWithGemini(userMessage, scheduleData);
+      const response = await chatWithGemini(userMessage, scheduleData, technicianProfiles);
       setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     } catch (error) {
       console.error('Gemini chat failed:', error);

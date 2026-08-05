@@ -14,7 +14,10 @@ import {
   History,
   Terminal,
   GripVertical,
-  ArrowRight
+  ArrowRight,
+  Heart,
+  MapPin,
+  Navigation
 } from 'lucide-react';
 import { db, auth, signIn, signOut, OperationType, handleFirestoreError } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -25,6 +28,11 @@ import { TECHNICIANS } from './constants/technicians';
 import { GeminiPanel } from './components/GeminiPanel';
 import { processScheduleCommand, ScheduleAction } from './services/geminiService';
 import { format, subDays } from 'date-fns';
+import { OFFICE_LOCATIONS, SCHEDULE_LOCATIONS, googleMapsDirectionsUrl } from './constants/locations';
+import { TechnicianProfilePanel } from './components/TechnicianProfilePanel';
+import { saveTechnicianProfile, subscribeToTechnicianProfiles, TechnicianProfile } from './services/technicianProfileService';
+import { rankMoveCandidates } from './services/happyScheduleService';
+import { parseLocalScheduleCommand } from './services/localCommandService';
 
 // Dnd Kit
 import {
@@ -57,17 +65,7 @@ const THEMES = [
   { id: 'forest', label: 'Forest Green', color: '#022c22' },
 ];
 
-const LOCATIONS = [
-  { id: 'Derry', code: 'D', color: '#ff4d4d', targetTechs: 8 },
-  { id: 'Londonderry', code: 'LD', color: '#4d94ff', targetTechs: 2 },
-  { id: 'Windham', code: 'W', color: '#4dff88', targetTechs: 4 },
-  { id: 'Bedford', code: 'B', color: '#ff4db8', targetTechs: 2 },
-  { id: 'Raymond', code: 'R', color: '#b84dff', targetTechs: 2 },
-  { id: 'Surgery', code: 'S', color: '#f59e0b', targetTechs: 0 },
-  { id: 'Off', code: 'OFF', color: '#64748b', targetTechs: 0 },
-  { id: 'Admin', code: 'ADM', color: '#94a3b8', targetTechs: 0 },
-  { id: 'Floating', code: 'FL', color: '#94a3b8', targetTechs: 0 },
-];
+const LOCATIONS = SCHEDULE_LOCATIONS;
 
 // --- Dnd Components ---
 const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging }: any) => {
@@ -631,6 +629,7 @@ export default function App() {
   const [allSchedules, setAllSchedules] = useState<SheetDaySchedule[]>(INITIAL_WEEK_DATA);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
   const [technicians, setTechnicians] = useState<Record<string, Technician>>({});
+  const [technicianProfiles, setTechnicianProfiles] = useState<Record<string, TechnicianProfile>>({});
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -652,6 +651,7 @@ export default function App() {
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<SheetAssignment | null>(null);
+  const [showTechProfile, setShowTechProfile] = useState(false);
 
   const isAdmin = viewMode === 'admin';
 
@@ -680,9 +680,11 @@ export default function App() {
 
     const unsubDoctors = subscribeToDoctors(setDoctors, handleConstraintError);
     const unsubTechs = subscribeToTechnicians(setTechnicians, handleConstraintError);
+    const unsubProfiles = subscribeToTechnicianProfiles(setTechnicianProfiles, handleConstraintError);
     return () => {
       unsubDoctors();
       unsubTechs();
+      unsubProfiles();
     };
   }, [user, isAdmin]);
 
@@ -791,7 +793,8 @@ export default function App() {
     
     setIsProcessingCommand(true);
     try {
-      const result: ScheduleAction = await processScheduleCommand(commandInput, schedule, doctors, technicians);
+      const result: ScheduleAction = parseLocalScheduleCommand(commandInput)
+        || await processScheduleCommand(commandInput, schedule, doctors, technicians, technicianProfiles);
       
       if (result.action === 'UNKNOWN') {
         setError(`Could not interpret command: ${result.reasoning}`);
@@ -1146,6 +1149,11 @@ export default function App() {
             }
           });
         }
+
+        const preferenceRank = getPreferenceRank(id, locationId);
+        if (preferenceRank && preferenceRank >= 4) {
+          issues.push(`${locationId} is ${id}'s #${preferenceRank} office preference`);
+        }
       }
     }
     return issues;
@@ -1154,6 +1162,23 @@ export default function App() {
   const isFullRefracting = (id: string) => {
     const tech = technicians[id] || Object.values(technicians).find(t => t.aliases?.includes(id));
     return tech?.fullRefracting || false;
+  };
+
+  const selectedProfile = selectedTech ? technicianProfiles[selectedTech] : undefined;
+
+  const getPreferenceRank = (techId: string, locationId: string) => {
+    const profile = technicianProfiles[techId];
+    const rank = profile?.officeRanking?.indexOf(locationId) ?? -1;
+    return rank >= 0 ? rank + 1 : null;
+  };
+
+  const saveSelectedProfile = async (profile: TechnicianProfile) => {
+    try {
+      await saveTechnicianProfile(profile);
+      setTechnicianProfiles(current => ({ ...current, [profile.initials]: profile }));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `technicianProfiles/${profile.initials}`);
+    }
   };
 
   if (loading) {
@@ -1340,6 +1365,12 @@ export default function App() {
                   <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                 </div>
               )}
+
+              {viewMode === 'technician' && selectedTech && (
+                <button onClick={() => setShowTechProfile(true)} className="flex items-center gap-2 px-4 py-2.5 bg-pink-500/10 text-pink-300 border border-pink-500/20 rounded-xl text-[0.6rem] font-black tracking-widest hover:bg-pink-500/20 transition-all">
+                  <Heart className="w-3.5 h-3.5" /> MY_PROFILE
+                </button>
+              )}
               
               <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 shadow-inner">
                 <select 
@@ -1381,6 +1412,33 @@ export default function App() {
                 </div>
               </div>
             ) : (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-5 bg-pink-500/[.06] border border-pink-500/15 rounded-2xl">
+                    <div className="text-[0.55rem] text-pink-300/60 uppercase tracking-widest font-black">Preference fit</div>
+                    <div className="text-2xl font-bold mt-2">{(() => {
+                      const ranks = allSchedules.flatMap(day => Object.entries(day.locations).flatMap(([location, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && a.person === selectedTech) && OFFICE_LOCATIONS.some(o => o.id === location) ? [getPreferenceRank(selectedTech, location)] : [])).filter((rank): rank is number => rank !== null);
+                      return ranks.length ? `${Math.round(ranks.reduce((sum, rank) => sum + (6 - rank) * 20, 0) / ranks.length)}%` : '--';
+                    })()}</div>
+                    <div className="text-[0.6rem] text-white/30 mt-1">Based on your office ranking</div>
+                  </div>
+                  <div className="p-5 bg-white/[.03] border border-white/10 rounded-2xl">
+                    <div className="text-[0.55rem] text-white/30 uppercase tracking-widest font-black">Weekly round trip</div>
+                    <div className="text-2xl font-bold mt-2">{(() => {
+                      const oneWay = allSchedules.reduce((total, day) => {
+                        const office = Object.entries(day.locations).find(([, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && a.person === selectedTech))?.[0];
+                        return total + (office ? (selectedProfile?.commuteMiles?.[office] || 0) : 0);
+                      }, 0);
+                      return oneWay ? `${(oneWay * 2).toFixed(1)} mi` : '--';
+                    })()}</div>
+                    <div className="text-[0.6rem] text-white/30 mt-1">Estimated from saved drives</div>
+                  </div>
+                  <button onClick={() => setShowTechProfile(true)} className="p-5 text-left bg-white/[.03] border border-white/10 rounded-2xl hover:bg-white/[.06] transition-all">
+                    <div className="flex justify-between"><div className="text-[0.55rem] text-white/30 uppercase tracking-widest font-black">Favorite office</div><Heart className="w-4 h-4 text-pink-400" /></div>
+                    <div className="text-2xl font-bold mt-2">{selectedProfile?.officeRanking?.[0] || 'Set yours'}</div>
+                    <div className="text-[0.6rem] text-white/30 mt-1">Open your happy schedule profile</div>
+                  </button>
+                </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                 {allSchedules.map((day, dIdx) => {
                   // Find tech in any location for this day
@@ -1440,6 +1498,17 @@ export default function App() {
                             </div>
                           </div>
 
+                          {OFFICE_LOCATIONS.some(office => office.id === techLoc) && (
+                            <div className="p-4 bg-white/[.03] border border-white/10 rounded-2xl space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[0.5rem] font-black uppercase tracking-widest text-white/30"><MapPin className="w-3 h-3" /> Commute</span>
+                                {getPreferenceRank(selectedTech, techLoc) && <span className="text-[0.55rem] font-bold text-pink-300">#{getPreferenceRank(selectedTech, techLoc)} choice</span>}
+                              </div>
+                              <div className="font-mono font-bold">{selectedProfile?.commuteMiles?.[techLoc] ? `${selectedProfile.commuteMiles[techLoc]} mi each way` : 'Distance not set'}</div>
+                              <a target="_blank" rel="noreferrer" href={googleMapsDirectionsUrl(OFFICE_LOCATIONS.find(office => office.id === techLoc)?.mapQuery || `${techLoc}, NH`, selectedProfile?.homeAddress)} className="flex items-center gap-2 text-[0.55rem] font-black text-blue-300 hover:text-blue-200"><Navigation className="w-3 h-3" /> OPEN DIRECTIONS</a>
+                            </div>
+                          )}
+
                           {techAssignment.status && (
                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
                               <div className="text-[0.5rem] font-black uppercase tracking-widest text-white/20 mb-2">Status / Notes</div>
@@ -1462,6 +1531,7 @@ export default function App() {
                     </motion.div>
                   );
                 })}
+              </div>
               </div>
             )}
           </div>
@@ -1653,6 +1723,10 @@ export default function App() {
                     );
                     const doctors = filtered.filter(a => a.isDoctor);
                     const techs = filtered.filter(a => !a.isDoctor);
+                    const actualTechCount = assignments.filter(a => !a.isDoctor).length;
+                    const moveRecommendation = loc.targetTechs > 0 && actualTechCount < loc.targetTechs && daySchedule
+                      ? rankMoveCandidates(daySchedule, loc.id, technicianProfiles)[0]
+                      : undefined;
 
                     return (
                       <DroppableLocation 
@@ -1695,6 +1769,19 @@ export default function App() {
                               ))}
                             </SortableContext>
                           </div>
+                        )}
+                        {moveRecommendation && (
+                          <button
+                            onClick={() => setCommandInput(`Move ${moveRecommendation.technician} from ${moveRecommendation.fromLocation} to ${loc.id} on ${daySchedule.dayName}`)}
+                            className="mt-auto p-2 text-left bg-pink-500/[.08] border border-pink-500/20 rounded-xl hover:bg-pink-500/[.14] transition-all"
+                            title={moveRecommendation.reason}
+                          >
+                            <div className="flex items-center justify-between gap-2 text-[0.48rem] uppercase tracking-widest font-black text-pink-300/70">
+                              <span>Best move</span><Heart className="w-2.5 h-2.5" />
+                            </div>
+                            <div className="text-[0.6rem] font-bold mt-1">{moveRecommendation.technician} from {moveRecommendation.fromLocation}</div>
+                            <div className="text-[0.48rem] text-white/30 mt-1 truncate">{moveRecommendation.reason}</div>
+                          </button>
                         )}
                       </DroppableLocation>
                     );
@@ -1755,6 +1842,15 @@ export default function App() {
 
       {/* Settings Modal */}
       <AnimatePresence>
+        {showTechProfile && selectedTech && user && (
+          <TechnicianProfilePanel
+            initials={selectedTech}
+            ownerUid={technicianProfiles[selectedTech]?.ownerUid || user.uid}
+            profile={technicianProfiles[selectedTech]}
+            onClose={() => setShowTechProfile(false)}
+            onSave={saveSelectedProfile}
+          />
+        )}
         {showSettings && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -1909,6 +2005,7 @@ export default function App() {
         {showGemini && (
           <GeminiPanel 
             scheduleData={allSchedules} 
+            technicianProfiles={technicianProfiles}
             onClose={() => setShowGemini(false)} 
           />
         )}

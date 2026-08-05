@@ -2,6 +2,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { SheetDaySchedule } from "./sheetService";
 import { Doctor } from "../constants/doctors";
 import { Technician } from "../constants/technicians";
+import { TechnicianProfile } from "./technicianProfileService";
+import { buildWeeklyAiContext, compactConstraints, compactProfiles, compactScheduleDay } from "./aiContextService";
+
+const responseCache = new Map<string, string>();
+const MAX_CACHE_ENTRIES = 50;
+
+function cacheKey(kind: string, payload: unknown) {
+  return `${kind}:${JSON.stringify(payload)}`;
+}
+
+function cacheResponse(key: string, value: string) {
+  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, value);
+}
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -69,12 +86,22 @@ function normalizeScheduleAction(raw: Partial<ScheduleAction>): ScheduleAction {
   } as ScheduleAction;
 }
 
-export async function processScheduleCommand(command: string, currentSchedule: SheetDaySchedule, doctors: Record<string, Doctor>, technicians: Record<string, Technician>): Promise<ScheduleAction> {
+export async function processScheduleCommand(command: string, currentSchedule: SheetDaySchedule, doctors: Record<string, Doctor>, technicians: Record<string, Technician>, technicianProfiles: Record<string, TechnicianProfile> = {}): Promise<ScheduleAction> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Gemini API key is not configured.");
   }
 
   try {
+    const commandContext = {
+      command,
+      schedule: compactScheduleDay(currentSchedule),
+      doctors: compactConstraints(doctors),
+      technicians: compactConstraints(technicians),
+      profiles: compactProfiles(technicianProfiles),
+    };
+    const key = cacheKey('command', commandContext);
+    const cached = responseCache.get(key);
+    if (cached) return normalizeScheduleAction(JSON.parse(cached) as Partial<ScheduleAction>);
     const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
@@ -83,13 +110,15 @@ export async function processScheduleCommand(command: string, currentSchedule: S
       Current Day: ${currentSchedule.dayName} (${currentSchedule.date})
       
       CONTEXT:
-      - Doctors: ${JSON.stringify(doctors)}
-      - Technicians: ${JSON.stringify(technicians)}
-      - Current Schedule: ${JSON.stringify(currentSchedule.locations)}
+      - Doctors: ${JSON.stringify(commandContext.doctors)}
+      - Technicians: ${JSON.stringify(commandContext.technicians)}
+      - Technician preferences (rank) and one-way commute (miles): ${JSON.stringify(commandContext.profiles)}
+      - Current Schedule (p=person,r=D doctor/T technician,s=start,e=end,x=status): ${JSON.stringify(commandContext.schedule)}
 
       Command: "${command}"
 
       Rules:
+      - When choosing which technician should move, preserve required staffing and hard constraints first. Then favor the shortest drive, the highest-ranked destination, and the smallest increase from their current commute. Explain that tradeoff in reasoning.
       - MOVE: Moving a person from one location to another in the current schedule. Requires person and toLocation.
       - ADD: Adding a person to a location in the current schedule. Requires person and toLocation.
       - REMOVE: Removing a person from a location in the current schedule. Requires person.
@@ -131,19 +160,25 @@ export async function processScheduleCommand(command: string, currentSchedule: S
       }
     });
 
-    return normalizeScheduleAction(JSON.parse(response.text || "{}") as Partial<ScheduleAction>);
+    const text = response.text || "{}";
+    cacheResponse(key, text);
+    return normalizeScheduleAction(JSON.parse(text) as Partial<ScheduleAction>);
   } catch (error) {
     console.error("Gemini Command Error:", error);
     throw error;
   }
 }
 
-export async function analyzeSchedule(scheduleData: SheetDaySchedule[]): Promise<string> {
+export async function analyzeSchedule(scheduleData: SheetDaySchedule[], technicianProfiles: Record<string, TechnicianProfile> = {}): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     return "Gemini API key is not configured. Please add it to your secrets.";
   }
 
   try {
+    const weeklyContext = buildWeeklyAiContext(scheduleData, technicianProfiles);
+    const key = cacheKey('analysis', weeklyContext);
+    const cached = responseCache.get(key);
+    if (cached) return cached;
     const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
@@ -153,9 +188,10 @@ export async function analyzeSchedule(scheduleData: SheetDaySchedule[]): Promise
       2. Overstaffing (locations with more technicians than needed).
       3. Doctor coverage issues.
       4. Any unusual patterns or potential bottlenecks.
+      5. The most logical technician moves, balancing coverage with commute miles and favorite-to-least-favorite office rankings. Never recommend a less comfortable move when an equally qualified, better-scoring option is available.
 
       Schedule Data:
-      ${JSON.stringify(scheduleData, null, 2)}
+      ${JSON.stringify(weeklyContext)}
 
       Provide a concise, professional summary with actionable insights. Use a technical, data-driven tone.
     `;
@@ -170,19 +206,25 @@ export async function analyzeSchedule(scheduleData: SheetDaySchedule[]): Promise
       },
     });
 
-    return response.text || "No analysis generated.";
+    const text = response.text || "No analysis generated.";
+    cacheResponse(key, text);
+    return text;
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     return `Error generating analysis: ${error instanceof Error ? error.message : String(error)}`;
   }
 }
 
-export async function chatWithGemini(message: string, scheduleData: SheetDaySchedule[]): Promise<string> {
+export async function chatWithGemini(message: string, scheduleData: SheetDaySchedule[], technicianProfiles: Record<string, TechnicianProfile> = {}): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     return "Gemini API key is not configured.";
   }
 
   try {
+    const weeklyContext = buildWeeklyAiContext(scheduleData, technicianProfiles);
+    const key = cacheKey('chat', { message, weeklyContext });
+    const cached = responseCache.get(key);
+    if (cached) return cached;
     const ai = getGeminiClient();
     const model = "gemini-3-flash-preview";
     const prompt = `
@@ -190,7 +232,9 @@ export async function chatWithGemini(message: string, scheduleData: SheetDaySche
       Answer the user's question based on the schedule data provided.
       
       Schedule Data:
-      ${JSON.stringify(scheduleData, null, 2)}
+      ${JSON.stringify(weeklyContext)}
+
+      For staffing or move questions, prioritize hard coverage requirements, then minimize commute burden and honor office rankings. State why the suggested person is the most comfortable logical choice.
 
       User Question: ${message}
     `;
@@ -200,7 +244,9 @@ export async function chatWithGemini(message: string, scheduleData: SheetDaySche
       contents: [{ parts: [{ text: prompt }] }],
     });
 
-    return response.text || "I'm sorry, I couldn't process that request.";
+    const text = response.text || "I'm sorry, I couldn't process that request.";
+    cacheResponse(key, text);
+    return text;
   } catch (error) {
     console.error("Gemini Chat Error:", error);
     return "Error communicating with Gemini.";

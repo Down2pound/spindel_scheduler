@@ -152,3 +152,26 @@ The admin scheduler includes:
 - day-aware AI commands
 - safer immutable updates for drag/drop and edit modal changes
 - audit logs for manual add/edit/delete changes
+
+## Technician Commute & Office Preferences
+
+Technicians can open **My Profile** from the personal weekly schedule to:
+
+- rank Derry, Londonderry, Windham, Bedford, and Raymond from favorite to least favorite
+- save their usual one-way mileage to each office
+- open driving directions in Google Maps or Apple Maps, optionally starting from a saved address or town
+- see estimated weekly round-trip mileage and a preference-fit score
+
+Admins receive a soft scheduling warning when a technician is placed at their fourth- or fifth-ranked office. Profile data is stored in the `technicianProfiles` Firestore collection. Deploy the updated `firestore.rules` before enabling profile saves in production.
+
+When an office is understaffed, the admin matrix ranks eligible technicians from floating or overstaffed offices. The move score considers the destination's preference rank, one-way mileage, and added commute versus the technician's current office. The best candidate appears as a suggestion that fills the command bar for review; it never moves someone automatically. Gemini schedule analysis and staffing questions receive the same profile data and decision priorities.
+
+### Token-efficient decision flow
+
+- Routine staffing recommendations run locally and use no AI tokens.
+- Strict `move`, `add`, and `remove` commands are parsed locally; unfamiliar or ambiguous phrasing falls back to Gemini.
+- Gemini receives compact field names and scheduling metrics rather than raw Firestore profiles. Home addresses are never included in AI context.
+- Identical commands, chats, and weekly analyses are cached for the current browser session. The cache is keyed to the exact schedule and preference context, limited to 50 entries, and naturally invalidates when relevant data changes.
+- Opening the Gemini panel does not automatically call the model; weekly narrative analysis starts only when the user selects **Analyze**.
+
+Office map destinations use the clinic street addresses published by Spindel Eye Associates.
