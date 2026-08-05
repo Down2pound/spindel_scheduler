@@ -7,7 +7,7 @@ Spindel Scheduler is a Vite + React technician scheduling app for mirroring clin
 Recent fixes on `main` include:
 
 - role-aware Google Sheet parsing, so `Doctor` / `Tech` sections determine whether ambiguous initials are parsed as doctors or technicians
-- parser regression coverage via `npm run test:parser`
+- parser regression coverage via `pnpm run test:parser`
 - safer Gemini command validation before schedule changes are applied
 - Gemini panel error handling so the UI does not get stuck while analyzing or chatting
 - production build polish for app metadata, font loading, and expected bundle size
@@ -20,7 +20,7 @@ A larger admin UI patch for AI add/remove commands and drag/edit state handling 
 ## Requirements
 
 - Node.js 20 or newer
-- npm, pnpm, or another Node package manager
+- pnpm 11.9.0 or newer, usually through Corepack
 - Firebase project access for the configured app
 - Gemini API key
 - Google Sheet published to the web as CSV, or a shareable Sheet URL that can be exported as CSV
@@ -30,7 +30,8 @@ A larger admin UI patch for AI add/remove commands and drag/edit state handling 
 ```bash
 git clone https://github.com/Down2pound/spindel_scheduler.git
 cd spindel_scheduler
-npm install
+corepack enable
+pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
@@ -44,7 +45,7 @@ APP_URL="http://localhost:3000"
 Start the app:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Open the local URL printed by Vite, usually `http://localhost:3000`.
@@ -54,21 +55,12 @@ Open the local URL printed by Vite, usually `http://localhost:3000`.
 Run these before deployment:
 
 ```bash
-npm run test:parser
-npm run lint
-npm run build
-```
-
-If using pnpm instead of npm:
-
-```bash
-pnpm install
 pnpm run test:parser
 pnpm run lint
 pnpm run build
 ```
 
-If pnpm warns about ignored build scripts, approve trusted project dependencies or use npm for the fastest first pass.
+The repository includes `pnpm-workspace.yaml` so trusted dependency build scripts can run noninteractively during install.
 
 GitHub Actions also runs these checks automatically for pushes to `main` and for pull requests.
 
@@ -97,12 +89,12 @@ Before production deployment, confirm:
 
 1. Pull latest `main` on the deployment machine.
 2. Check GitHub Actions for a passing CI run, or run the verification commands locally.
-3. Install dependencies.
+3. Install dependencies with `corepack enable` and `pnpm install --frozen-lockfile`.
 4. Create `.env.local` with the Gemini key.
-5. Run `npm run test:parser`.
-6. Run `npm run lint`.
-7. Run `npm run build`.
-8. Smoke test `npm run dev` with Google sign-in and Sheet sync.
+5. Run `pnpm run test:parser`.
+6. Run `pnpm run lint`.
+7. Run `pnpm run build`.
+8. Smoke test `pnpm run dev` with Google sign-in and Sheet sync.
 9. Confirm Firestore reads/writes work for admin schedule edits.
 10. Deploy through the chosen host.
 11. Set production environment variables in the host dashboard.
@@ -110,7 +102,7 @@ Before production deployment, confirm:
 
 ## Deployment Options
 
-This is a static Vite app after `npm run build`, so any static host that serves `dist` works.
+This is a static Vite app after `pnpm run build`, so any static host that serves `dist` works.
 
 Firebase Hosting:
 
@@ -118,7 +110,9 @@ Firebase Hosting:
 npm install -g firebase-tools
 firebase login
 firebase use --add
-npm run build
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run build
 firebase deploy --only hosting
 ```
 
@@ -127,7 +121,9 @@ Netlify CLI:
 ```bash
 npm install -g netlify-cli
 netlify login
-npm run build
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run build
 netlify deploy --prod --dir=dist
 ```
 
@@ -139,7 +135,7 @@ vercel login
 vercel --prod
 ```
 
-For dashboard-based deploys, use `npm run build` as the build command and `dist` as the publish/output directory.
+For dashboard-based deploys, use `pnpm run build` as the build command and `dist` as the publish/output directory.
 
 ## Optional Admin Patch
 
@@ -147,9 +143,9 @@ Apply the prepared `src/App.tsx` patch if you want the admin command executor to
 
 ```bash
 git apply --ignore-whitespace patches/spindel-app-command-dnd.patch
-npm run lint
-npm run test:parser
-npm run build
+pnpm run lint
+pnpm run test:parser
+pnpm run build
 ```
 
 The patch adds:
