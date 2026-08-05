@@ -27,7 +27,7 @@ import { DOCTORS } from './constants/doctors';
 import { TECHNICIANS } from './constants/technicians';
 import { GeminiPanel } from './components/GeminiPanel';
 import { processScheduleCommand, ScheduleAction } from './services/geminiService';
-import { format, subDays } from 'date-fns';
+import { addDays, format, startOfWeek, subDays } from 'date-fns';
 import { OFFICE_LOCATIONS, SCHEDULE_LOCATIONS, googleMapsDirectionsUrl } from './constants/locations';
 import { TechnicianProfilePanel } from './components/TechnicianProfilePanel';
 import { saveTechnicianProfile, subscribeToTechnicianProfiles, TechnicianProfile } from './services/technicianProfileService';
@@ -116,14 +116,22 @@ const DroppableLocation = ({ id, children, className }: any) => {
   );
 };
 
+const TODAY = new Date();
+const CURRENT_WEEK_START = startOfWeek(TODAY, { weekStartsOn: 1 });
+const CURRENT_DAY_INDEX = Math.min((TODAY.getDay() + 6) % 7, 5);
+const weekLabel = (weekOffset: number) => {
+  const start = addDays(CURRENT_WEEK_START, weekOffset * 7);
+  return `${format(start, 'M/d')} - ${format(addDays(start, 5), 'M/d')}`;
+};
+
 const WEEKS = [
-  { id: 'current', label: 'Current Week', gid: '0' },
-  { id: 'week2', label: '3/9 - 3/14', gid: '11223344' }, // Placeholder GIDs
-  { id: 'week3', label: '3/16 - 3/21', gid: '55667788' },
+  { id: 'current', label: `Current Week · ${format(TODAY, 'M/d/yy')}`, gid: '0' },
+  { id: 'week2', label: weekLabel(1), gid: '11223344' }, // Placeholder GIDs
+  { id: 'week3', label: weekLabel(2), gid: '55667788' },
   { id: 'saturdays', label: 'Saturdays', gid: '99001122' },
 ];
 
-const INITIAL_WEEK_DATA: SheetDaySchedule[] = [
+const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
     date: '03/09',
     dayName: 'Monday',
@@ -410,6 +418,17 @@ const INITIAL_WEEK_DATA: SheetDaySchedule[] = [
   }
 ];
 
+const INITIAL_WEEK_DATA: SheetDaySchedule[] = INITIAL_WEEK_TEMPLATE.map((day, index) => ({
+  ...day,
+  date: format(addDays(CURRENT_WEEK_START, index), 'M/d/yy'),
+}));
+
+const CURRENT_WEEK_DAY_INDEX = new Map(INITIAL_WEEK_DATA.map((day, index) => [day.dayName.toLowerCase(), index]));
+const withCurrentWeekDate = (day: SheetDaySchedule): SheetDaySchedule => {
+  const dayIndex = CURRENT_WEEK_DAY_INDEX.get(day.dayName.toLowerCase());
+  return dayIndex === undefined ? day : { ...day, date: format(addDays(CURRENT_WEEK_START, dayIndex), 'M/d/yy') };
+};
+
 interface StaffCardProps {
   assignment: SheetAssignment;
   loc: any;
@@ -626,12 +645,12 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'technician'>('technician');
   const [selectedTech, setSelectedTech] = useState<string>('');
-  const [schedule, setSchedule] = useState<SheetDaySchedule>(INITIAL_WEEK_DATA[0]);
+  const [schedule, setSchedule] = useState<SheetDaySchedule>(INITIAL_WEEK_DATA[CURRENT_DAY_INDEX]);
   const [allSchedules, setAllSchedules] = useState<SheetDaySchedule[]>(INITIAL_WEEK_DATA);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
   const [technicians, setTechnicians] = useState<Record<string, Technician>>({});
   const [technicianProfiles, setTechnicianProfiles] = useState<Record<string, TechnicianProfile>>({});
-  const [selectedDayIdx, setSelectedDayIdx] = useState(0);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(CURRENT_DAY_INDEX);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -959,7 +978,7 @@ export default function App() {
     const unsubscribe = onSnapshot(doc(db, 'schedules', scheduleId), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as SheetDaySchedule;
-        setSchedule(data);
+        setSchedule(selectedWeek.id === 'current' ? withCurrentWeekDate(data) : data);
       }
     }, (err) => {
       console.error(`Failed to load schedule ${scheduleId}:`, err);
@@ -982,12 +1001,13 @@ export default function App() {
       const gid = weekGids[selectedWeek.id] || selectedWeek.gid;
       const data = await fetchSheetData(sheetUrl, gid);
       if (data.length > 0) {
-        setAllSchedules(data);
+        const datedData = selectedWeek.id === 'current' ? data.map(withCurrentWeekDate) : data;
+        setAllSchedules(datedData);
         // Auto-select today if possible
         const today = new Date().getDay(); // 0 is Sunday, 1 is Monday
         const dayIdx = today === 0 ? 0 : today - 1; // Map Sunday to Monday for now or just 0
-        setSelectedDayIdx(Math.min(dayIdx, data.length - 1));
-        setSchedule(data[Math.min(dayIdx, data.length - 1)]);
+        setSelectedDayIdx(Math.min(dayIdx, datedData.length - 1));
+        setSchedule(datedData[Math.min(dayIdx, datedData.length - 1)]);
       }
     } catch (err) {
       console.error(err);
