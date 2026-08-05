@@ -13,6 +13,7 @@ Recent fixes on `main` include:
 - production build polish for app metadata, font loading, and expected bundle size
 - project metadata and type packages needed for local TypeScript checks
 - GitHub Actions CI for parser tests, type-checking, and production builds on pushes and pull requests
+- GitHub Pages preview publishing for `main`
 - static host configs for Firebase Hosting, Netlify, and Vercel
 
 ## Requirements
@@ -100,6 +101,14 @@ Before production deployment, confirm:
 ## Deployment Options
 
 This is a static Vite app after the production build, so any static host that serves `dist` works.
+
+GitHub Pages:
+
+The repository includes a GitHub Pages workflow that builds `main` with `BASE_PATH=/spindel_scheduler/` and publishes `dist`. After the first successful Pages deployment, the preview URL should be:
+
+```text
+https://down2pound.github.io/spindel_scheduler/
+```
 
 Firebase Hosting:
 
