@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, collection, onSnapshot, query, where, getDocs, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -73,5 +73,10 @@ async function testConnection() {
 }
 testConnection();
 
-export const signIn = () => signInWithPopup(auth, googleProvider);
+export const signIn = () => {
+  if (window.location.hostname.endsWith('github.io')) {
+    return signInWithRedirect(auth, googleProvider);
+  }
+  return signInWithPopup(auth, googleProvider);
+};
 export const signOut = () => auth.signOut();
