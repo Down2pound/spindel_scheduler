@@ -20,9 +20,9 @@ interface Props {
 
 const MAP_BOUNDS = {
   north: 43.08,
-  south: 42.76,
-  west: -71.52,
-  east: -71.13,
+  south: 42.18,
+  west: -71.82,
+  east: -70.98,
 };
 
 function pinToPosition(pin: Coordinates) {

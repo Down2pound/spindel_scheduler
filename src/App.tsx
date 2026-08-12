@@ -47,6 +47,7 @@ import {
   SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY,
   upsertTechnicianInRoster,
 } from './services/technicianRosterService';
+import { DEFAULT_SHIFT, resolveShiftForAssignment, ShiftRule, SHIFT_RULES_STORAGE_KEY } from './services/shiftRuleService';
 
 // Dnd Kit
 import {
@@ -718,6 +719,22 @@ export default function App() {
   const [newTechCanRefract, setNewTechCanRefract] = useState(true);
   const [newTechNote, setNewTechNote] = useState('');
   const [manualTechnicianIds, setManualTechnicianIds] = useState<string[]>([]);
+  const [shiftRules, setShiftRules] = useState<ShiftRule[]>(() => {
+    try {
+      const saved = localStorage.getItem(SHIFT_RULES_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [newShiftRule, setNewShiftRule] = useState<ShiftRule>({
+    id: '',
+    technician: '',
+    dayName: 'Monday',
+    locationId: 'Derry',
+    startTime: DEFAULT_SHIFT.startTime,
+    endTime: DEFAULT_SHIFT.endTime,
+  });
   const [scheduleRequestText, setScheduleRequestText] = useState('');
   const [scheduleRequests, setScheduleRequests] = useState<ScheduleChangeRequest[]>(() => {
     try {
@@ -800,6 +817,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(LOCAL_TECHNICIAN_PROFILES_KEY, JSON.stringify(technicianProfiles));
   }, [technicianProfiles]);
+
+  useEffect(() => {
+    localStorage.setItem(SHIFT_RULES_STORAGE_KEY, JSON.stringify(shiftRules));
+  }, [shiftRules]);
 
   useEffect(() => {
     if (!user || !isAdmin) return;
@@ -960,6 +981,31 @@ export default function App() {
     );
   };
 
+  const addShiftRule = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const technician = canonicalizeTechnicianInitials(newShiftRule.technician);
+    if (!technician) return;
+    setShiftRules(current => [
+      ...current,
+      { ...newShiftRule, id: `shift_${Date.now()}`, technician },
+    ]);
+    setNewShiftRule({
+      id: '',
+      technician: '',
+      dayName: newShiftRule.dayName,
+      locationId: newShiftRule.locationId,
+      startTime: DEFAULT_SHIFT.startTime,
+      endTime: DEFAULT_SHIFT.endTime,
+    });
+  };
+
+  const removeShiftRule = (ruleId: string) => {
+    setShiftRules(current => current.filter(rule => rule.id !== ruleId));
+  };
+
+  const getDefaultShift = (person: string, dayName: string, locationId: string) =>
+    resolveShiftForAssignment({ person, dayName, locationId, rules: shiftRules });
+
   const cloneDaySchedule = (day: SheetDaySchedule): SheetDaySchedule => ({
     ...day,
     locations: Object.fromEntries(
@@ -1042,11 +1088,12 @@ export default function App() {
         const toLoc = resolveLocationName(result.toLocation || result.fromLocation) || 'Floating';
         if (!newSchedule.locations[toLoc]) newSchedule.locations[toLoc] = [];
         const isDoctor = Boolean(doctors[result.person]);
+        const defaultShift = isDoctor ? { startTime: '', endTime: '' } : getDefaultShift(result.person, newSchedule.dayName, toLoc);
         newSchedule.locations[toLoc].push({
           person: result.person,
           role: isDoctor ? 'Doctor' : 'Technician',
-          startTime: result.startTime || '',
-          endTime: result.endTime || '',
+          startTime: result.startTime || defaultShift.startTime,
+          endTime: result.endTime || defaultShift.endTime,
           location: toLoc,
           isDoctor,
           status: '',
@@ -1275,11 +1322,12 @@ export default function App() {
   };
 
   const addStaff = (locationId: string) => {
+    const defaultShift = getDefaultShift('NEW', schedule.dayName, locationId);
     const newAssignment: SheetAssignment = {
       person: 'NEW',
       role: 'Technician',
-      startTime: '08:00',
-      endTime: '17:00',
+      startTime: defaultShift.startTime,
+      endTime: defaultShift.endTime,
       location: locationId,
       isDoctor: false,
       status: ''
@@ -2393,6 +2441,59 @@ export default function App() {
                         <div className="absolute right-1 top-1 w-2 h-2 bg-emerald-400 rounded-full" />
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[0.65rem] uppercase tracking-[0.3em] text-white/40 font-bold block ml-1">Default_Shift_Rules</label>
+                  <form onSubmit={addShiftRule} className="grid grid-cols-2 gap-3">
+                    <input
+                      value={newShiftRule.technician}
+                      onChange={(event) => setNewShiftRule({ ...newShiftRule, technician: event.target.value })}
+                      placeholder="Tech initials"
+                      className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-[0.7rem] font-mono focus:outline-none focus:border-white/30"
+                    />
+                    <select
+                      value={newShiftRule.dayName}
+                      onChange={(event) => setNewShiftRule({ ...newShiftRule, dayName: event.target.value })}
+                      className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-[0.7rem] font-mono focus:outline-none focus:border-white/30"
+                    >
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => <option key={day} value={day}>{day}</option>)}
+                    </select>
+                    <select
+                      value={newShiftRule.locationId}
+                      onChange={(event) => setNewShiftRule({ ...newShiftRule, locationId: event.target.value })}
+                      className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-[0.7rem] font-mono focus:outline-none focus:border-white/30"
+                    >
+                      {OFFICE_LOCATIONS.map(office => <option key={office.id} value={office.id}>{office.id}</option>)}
+                    </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={newShiftRule.startTime}
+                        onChange={(event) => setNewShiftRule({ ...newShiftRule, startTime: event.target.value })}
+                        placeholder="7:45a"
+                        className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-[0.7rem] font-mono focus:outline-none focus:border-white/30"
+                      />
+                      <input
+                        value={newShiftRule.endTime}
+                        onChange={(event) => setNewShiftRule({ ...newShiftRule, endTime: event.target.value })}
+                        placeholder="4:45p"
+                        className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-[0.7rem] font-mono focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <button type="submit" className="col-span-2 bg-white text-black font-bold py-3 rounded-xl hover:bg-white/90 transition-all">
+                      Add editable rule
+                    </button>
+                  </form>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {shiftRules.length === 0 ? (
+                      <p className="text-[0.65rem] text-white/25 font-mono">Standard office shift is 7:45a-4:45p unless a rule is added here.</p>
+                    ) : shiftRules.map(rule => (
+                      <div key={rule.id} className="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <span className="text-[0.65rem] font-mono">{rule.technician} {rule.dayName} {rule.locationId} {rule.startTime}-{rule.endTime}</span>
+                        <button onClick={() => removeShiftRule(rule.id)} className="text-[0.6rem] font-bold text-red-300 hover:text-red-200">REMOVE</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

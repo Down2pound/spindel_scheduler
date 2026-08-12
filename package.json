@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "test:parser": "tsx tests/sheetService.test.ts && tsx tests/technicianRosterService.test.ts",
     "test:happy-schedule": "tsx tests/happyScheduleService.test.ts && tsx tests/commuteService.test.ts",
-    "test:local-commands": "tsx tests/localCommandService.test.ts",
+    "test:local-commands": "tsx tests/localCommandService.test.ts && tsx tests/shiftRuleService.test.ts",
     "test": "pnpm run test:parser && pnpm run test:happy-schedule && pnpm run test:local-commands"
   },
   "dependencies": {
