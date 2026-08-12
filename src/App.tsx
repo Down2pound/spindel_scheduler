@@ -155,6 +155,7 @@ const WEEKS = [
 ];
 
 const UNIVERSAL_PASSWORD = '68Camaro!!!';
+const ADMIN_PASSWORD_VERSION = '68Camaro!!!';
 
 const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
@@ -699,7 +700,11 @@ export default function App() {
   const [activeAssignment, setActiveAssignment] = useState<SheetAssignment | null>(null);
   const [showTechProfile, setShowTechProfile] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
-  const [passwordUnlocked, setPasswordUnlocked] = useState(() => localStorage.getItem('spindelPasswordUnlocked') === 'true');
+  const [passwordUnlocked, setPasswordUnlocked] = useState(() =>
+    localStorage.getItem('spindelPasswordUnlocked') === 'true' &&
+    localStorage.getItem('spindelAdminPasswordVersion') === ADMIN_PASSWORD_VERSION
+  );
+  const [techUnlocked, setTechUnlocked] = useState(() => localStorage.getItem('spindelTechUnlocked') === 'true');
   const [authError, setAuthError] = useState<string | null>(null);
   const [newTechInitials, setNewTechInitials] = useState('');
   const [newTechCanRefract, setNewTechCanRefract] = useState(true);
@@ -715,8 +720,9 @@ export default function App() {
     }
   });
 
-  const hasAccess = Boolean(user) || passwordUnlocked;
-  const isAdmin = viewMode === 'admin' || passwordUnlocked;
+  const adminUser = user?.email === 'jefchapin@gmail.com';
+  const hasAccess = Boolean(user) || passwordUnlocked || techUnlocked;
+  const isAdmin = Boolean(passwordUnlocked || adminUser);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -774,6 +780,12 @@ export default function App() {
   }, [passwordUnlocked, user]);
 
   useEffect(() => {
+    if (techUnlocked && !passwordUnlocked && !user) {
+      setViewMode('technician');
+    }
+  }, [techUnlocked, passwordUnlocked, user]);
+
+  useEffect(() => {
     localStorage.setItem(SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY, JSON.stringify(scheduleRequests));
   }, [scheduleRequests]);
 
@@ -827,13 +839,30 @@ export default function App() {
       return;
     }
     localStorage.setItem('spindelPasswordUnlocked', 'true');
+    localStorage.setItem('spindelAdminPasswordVersion', ADMIN_PASSWORD_VERSION);
+    localStorage.removeItem('spindelTechUnlocked');
     setPasswordUnlocked(true);
+    setTechUnlocked(false);
+    setViewMode('admin');
     setPasswordInput('');
+  };
+
+  const handleTechnicianLogin = () => {
+    localStorage.setItem('spindelTechUnlocked', 'true');
+    localStorage.removeItem('spindelPasswordUnlocked');
+    localStorage.removeItem('spindelAdminPasswordVersion');
+    setTechUnlocked(true);
+    setPasswordUnlocked(false);
+    setViewMode('technician');
+    setAuthError(null);
   };
 
   const handleSignOut = () => {
     localStorage.removeItem('spindelPasswordUnlocked');
+    localStorage.removeItem('spindelTechUnlocked');
     setPasswordUnlocked(false);
+    setTechUnlocked(false);
+    setSelectedTech('');
     if (user) signOut();
   };
 
@@ -1379,22 +1408,31 @@ export default function App() {
             <LayoutDashboard className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-[var(--text)] mb-3 tracking-tight">Spindel Scheduler</h1>
-          <p className="text-[var(--text-muted)] mb-10 text-sm leading-relaxed">A calmer way to coordinate clinic schedules and support your team.</p>
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <p className="text-[var(--text-muted)] mb-8 text-sm leading-relaxed">Choose the right workspace for today.</p>
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={handleTechnicianLogin}
+              className="w-full bg-[#243078] text-white font-bold py-4 rounded-full hover:bg-[#258c3b] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
+            >
+              <Users className="w-5 h-5" />
+              Technician Login
+            </button>
+          </div>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4 mt-8 pt-8 border-t border-[#dce1eb]">
             <input
               type="password"
               value={passwordInput}
               onChange={(event) => setPasswordInput(event.target.value)}
-              placeholder="Universal password"
+              placeholder="Admin password"
               className="w-full border border-[#dce1eb] rounded-full px-5 py-4 text-[#243078] text-sm font-semibold outline-none focus:border-[#258c3b] focus:ring-4 focus:ring-[#258c3b]/10"
-              autoFocus
             />
             <button
               type="submit"
               className="w-full bg-[#258c3b] text-white font-bold py-4 rounded-full hover:bg-[#243078] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
             >
-              <Users className="w-5 h-5" />
-              Open Scheduler
+              <LayoutDashboard className="w-5 h-5" />
+              Admin Login
             </button>
           </form>
           {authError && (
@@ -1435,16 +1473,18 @@ export default function App() {
         </motion.div>
         
         <div className="flex-1 flex items-center gap-3">
-          <button 
-            onClick={() => setViewMode('admin')}
-            aria-label="Schedule workspace"
-            className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'admin' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-          >
-            <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6" />
-            <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
-              Schedule workspace
-            </div>
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => setViewMode('admin')}
+              aria-label="Schedule workspace"
+              className={`p-2 md:p-3 rounded-full transition-all group relative ${viewMode === 'admin' ? 'text-[#243078] bg-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+            >
+              <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6" />
+              <div className="hidden md:block absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-[#243078] text-[0.6rem] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+                Schedule workspace
+              </div>
+            </button>
+          )}
 
           <button 
             onClick={() => setViewMode('technician')}

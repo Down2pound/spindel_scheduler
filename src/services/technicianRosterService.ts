@@ -5,6 +5,10 @@ export const SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY = 'spindelScheduleChangeReques
 const CANONICAL_TECHNICIAN_IDS: Record<string, string> = {
   DS_T: 'DSJ',
 };
+const ACTIVE_TECH_STATUSES = new Set([
+  'LASIK', 'BIO', 'VF', 'OCT', 'OUT', 'REQ', 'PREOPS',
+  'PREOPS_ADMIN', 'FLOAT', 'FLOATING',
+]);
 
 export interface TechnicianRosterUpdate {
   initials: string;
@@ -48,6 +52,16 @@ const parseRosterDate = (value: string, today: Date) => {
   return new Date(year, month - 1, day);
 };
 
+const hasRosterActivity = (assignment: { startTime?: string; endTime?: string; location?: string; status?: string }) => {
+  if (assignment.startTime || assignment.endTime) return true;
+  if (assignment.location && !['Floating', 'Off'].includes(assignment.location)) return true;
+
+  const status = normalizeTechnicianInitials(assignment.status || '');
+  if (!status) return false;
+  const statusParts = status.split(/[_/,]+/).filter(Boolean);
+  return ACTIVE_TECH_STATUSES.has(status) || statusParts.some(part => ACTIVE_TECH_STATUSES.has(part));
+};
+
 export function buildRecentTechnicianRoster(
   schedules: SheetDaySchedule[],
   knownTechnicians: Record<string, Technician>,
@@ -67,7 +81,7 @@ export function buildRecentTechnicianRoster(
     for (const assignments of Object.values(daySchedule.locations)) {
       for (const assignment of assignments) {
         const canonicalId = canonicalizeTechnicianInitials(assignment.person);
-        if (!canonicalId || assignment.isDoctor) continue;
+        if (!canonicalId || assignment.isDoctor || !hasRosterActivity(assignment)) continue;
         roster[canonicalId] = knownTechnicians[canonicalId] || { fullRefracting: true };
       }
     }

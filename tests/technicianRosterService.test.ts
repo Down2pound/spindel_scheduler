@@ -47,6 +47,10 @@ const currentRoster = buildRecentTechnicianRoster([
       Derry: [
         { person: 'DS_T', role: 'Technician', startTime: '', endTime: '', location: 'Derry', isDoctor: false },
         { person: 'JC', role: 'Technician', startTime: '', endTime: '', location: 'Derry', isDoctor: false },
+        { person: 'BJ', role: 'Technician', startTime: '', endTime: '', location: 'Floating', isDoctor: false, status: 'MG' },
+        { person: 'ND', role: 'Technician', startTime: '', endTime: '', location: 'Floating', isDoctor: false, status: 'MF' },
+        { person: 'LG', role: 'Technician', startTime: '', endTime: '', location: 'Floating', isDoctor: false, status: 'ADMIN' },
+        { person: 'SC', role: 'Technician', startTime: '', endTime: '', location: 'Floating', isDoctor: false, status: 'OUT' },
       ],
     },
   },
@@ -66,7 +70,7 @@ const currentRoster = buildRecentTechnicianRoster([
   doctorIds: ['JC'],
 });
 
-assert.deepEqual(Object.keys(currentRoster), ['DSJ', 'JC']);
+assert.deepEqual(Object.keys(currentRoster), ['DSJ', 'JC', 'SC']);
 assert.equal(currentRoster.DSJ.refractingNote, 'Does not refract yet');
 
 console.log('technician roster/request tests passed');
