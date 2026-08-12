@@ -1841,7 +1841,7 @@ export default function App() {
 
         {viewMode === 'myday' ? (
           <div className="flex-1 space-y-6">
-            <div className="flex flex-wrap gap-2">
+            <div className="mobile-myday-picker flex flex-wrap gap-2">
               {allSchedules.map((day, dIdx) => (
                 <button
                   key={`${day.dayName}-${day.date}`}
