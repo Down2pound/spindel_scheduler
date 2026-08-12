@@ -156,6 +156,7 @@ const WEEKS = [
 
 const UNIVERSAL_PASSWORD = '68Camaro!!!';
 const ADMIN_PASSWORD_VERSION = '68Camaro!!!';
+const LOCAL_TECHNICIAN_PROFILES_KEY = 'spindelTechnicianProfiles';
 
 const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
@@ -675,7 +676,14 @@ export default function App() {
   const [allSchedules, setAllSchedules] = useState<SheetDaySchedule[]>(INITIAL_WEEK_DATA);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>(DOCTORS);
   const [technicians, setTechnicians] = useState<Record<string, Technician>>(TECHNICIANS);
-  const [technicianProfiles, setTechnicianProfiles] = useState<Record<string, TechnicianProfile>>({});
+  const [technicianProfiles, setTechnicianProfiles] = useState<Record<string, TechnicianProfile>>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_TECHNICIAN_PROFILES_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [selectedDayIdx, setSelectedDayIdx] = useState(CURRENT_DAY_INDEX);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -788,6 +796,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY, JSON.stringify(scheduleRequests));
   }, [scheduleRequests]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_TECHNICIAN_PROFILES_KEY, JSON.stringify(technicianProfiles));
+  }, [technicianProfiles]);
 
   useEffect(() => {
     if (!user || !isAdmin) return;
@@ -919,10 +931,20 @@ export default function App() {
     setError(null);
 
     try {
+      const requester = selectedTech || 'Admin';
+      const profile = technicianProfiles[requester];
+      const favoriteOffice = profile?.officeRanking?.[0];
+      const dayOffice = allSchedules[selectedDayIdx]
+        ? Object.entries(allSchedules[selectedDayIdx].locations)
+            .find(([, assignments]) => assignments.some(assignment => !assignment.isDoctor && canonicalizeTechnicianInitials(assignment.person) === requester))?.[0]
+        : undefined;
+      const commuteNote = profile && dayOffice
+        ? ` Current: ${dayOffice}${profile.commuteMiles?.[dayOffice] !== undefined ? ` (${profile.commuteMiles[dayOffice]} mi)` : ''}. Favorite: ${favoriteOffice || 'not set'}.`
+        : '';
       const request = createScheduleChangeRequest({
-        requester: selectedTech || 'Admin',
+        requester,
         dayName: allSchedules[selectedDayIdx]?.dayName || schedule.dayName,
-        details: scheduleRequestText,
+        details: `${scheduleRequestText.trim()}${commuteNote}`,
       });
       setScheduleRequests(current => [request, ...current].slice(0, 25));
       setScheduleRequestText('');
@@ -1374,6 +1396,8 @@ export default function App() {
   };
 
   const saveSelectedProfile = async (profile: TechnicianProfile) => {
+    setTechnicianProfiles(current => ({ ...current, [profile.initials]: profile }));
+    if (!user) return;
     try {
       await saveTechnicianProfile(profile);
       setTechnicianProfiles(current => ({ ...current, [profile.initials]: profile }));
@@ -2273,10 +2297,10 @@ export default function App() {
 
       {/* Settings Modal */}
       <AnimatePresence>
-        {showTechProfile && selectedTech && user && (
+        {showTechProfile && selectedTech && (
           <TechnicianProfilePanel
             initials={selectedTech}
-            ownerUid={technicianProfiles[selectedTech]?.ownerUid || user.uid}
+            ownerUid={technicianProfiles[selectedTech]?.ownerUid || user?.uid || 'local-preview'}
             profile={technicianProfiles[selectedTech]}
             onClose={() => setShowTechProfile(false)}
             onSave={saveSelectedProfile}

@@ -1,10 +1,12 @@
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { Coordinates } from './commuteService';
 
 export interface TechnicianProfile {
   initials: string;
   ownerUid: string;
   homeAddress?: string;
+  homePin?: Coordinates;
   officeRanking: string[];
   commuteMiles: Record<string, number>;
   updatedAt?: unknown;

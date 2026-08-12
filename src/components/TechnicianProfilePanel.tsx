@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
+import { MouseEvent, PointerEvent, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowDown, ArrowUp, Heart, MapPin, Navigation, Save, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Crosshair, Heart, MapPin, Navigation, Save, X } from 'lucide-react';
 import { OFFICE_LOCATIONS, appleMapsDirectionsUrl, googleMapsDirectionsUrl } from '../constants/locations';
 import { TechnicianProfile } from '../services/technicianProfileService';
+import {
+  calculateOfficeCommutes,
+  Coordinates,
+  OFFICE_COORDINATES,
+  rankOfficesByCommute,
+} from '../services/commuteService';
 
 interface Props {
   initials: string;
@@ -12,8 +18,33 @@ interface Props {
   onSave: (profile: TechnicianProfile) => Promise<void>;
 }
 
+const MAP_BOUNDS = {
+  north: 43.08,
+  south: 42.76,
+  west: -71.52,
+  east: -71.13,
+};
+
+function pinToPosition(pin: Coordinates) {
+  return {
+    left: `${((pin.lng - MAP_BOUNDS.west) / (MAP_BOUNDS.east - MAP_BOUNDS.west)) * 100}%`,
+    top: `${((MAP_BOUNDS.north - pin.lat) / (MAP_BOUNDS.north - MAP_BOUNDS.south)) * 100}%`,
+  };
+}
+
+function positionToPin(event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>): Coordinates {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+  const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+  return {
+    lat: MAP_BOUNDS.north - (y * (MAP_BOUNDS.north - MAP_BOUNDS.south)),
+    lng: MAP_BOUNDS.west + (x * (MAP_BOUNDS.east - MAP_BOUNDS.west)),
+  };
+}
+
 export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, onSave }: Props) {
   const [homeAddress, setHomeAddress] = useState(profile?.homeAddress || '');
+  const [homePin, setHomePin] = useState<Coordinates | undefined>(profile?.homePin);
   const [ranking, setRanking] = useState<string[]>(profile?.officeRanking?.length
     ? profile.officeRanking
     : OFFICE_LOCATIONS.map(location => location.id));
@@ -22,6 +53,7 @@ export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, o
 
   useEffect(() => {
     setHomeAddress(profile?.homeAddress || '');
+    setHomePin(profile?.homePin);
     setRanking(profile?.officeRanking?.length ? profile.officeRanking : OFFICE_LOCATIONS.map(location => location.id));
     setMiles(profile?.commuteMiles || {});
   }, [profile, initials]);
@@ -37,11 +69,29 @@ export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, o
   const submit = async () => {
     setSaving(true);
     try {
-      await onSave({ initials, ownerUid, homeAddress: homeAddress.trim(), officeRanking: ranking, commuteMiles: miles });
+      await onSave({ initials, ownerUid, homeAddress: homeAddress.trim(), homePin, officeRanking: ranking, commuteMiles: miles });
       onClose();
     } finally {
       setSaving(false);
     }
+  };
+
+  const updateHomePin = (pin: Coordinates) => {
+    const roundedPin = { lat: Number(pin.lat.toFixed(5)), lng: Number(pin.lng.toFixed(5)) };
+    setHomePin(roundedPin);
+    setMiles(calculateOfficeCommutes(roundedPin));
+  };
+
+  const useCurrentLocation = () => {
+    navigator.geolocation?.getCurrentPosition(position => {
+      updateHomePin({ lat: position.coords.latitude, lng: position.coords.longitude });
+    });
+  };
+
+  const applyCommuteRanking = () => {
+    if (!homePin) return;
+    setRanking(rankOfficesByCommute(homePin));
+    setMiles(calculateOfficeCommutes(homePin));
   };
 
   return (
@@ -52,7 +102,7 @@ export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, o
           <div>
             <div className="flex items-center gap-2 text-pink-400 text-[0.6rem] font-black tracking-[.25em] uppercase mb-2"><Heart className="w-4 h-4" /> Happy schedule profile</div>
             <h2 className="text-2xl font-bold">{initials} office preferences</h2>
-            <p className="text-xs text-white/40 mt-2">Rank offices from favorite to least favorite and record your usual one-way drive.</p>
+            <p className="text-xs text-white/40 mt-2">Rank offices from favorite to least favorite and save your usual one-way drive.</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10"><X className="w-5 h-5" /></button>
         </div>
@@ -65,6 +115,52 @@ export function TechnicianProfilePanel({ initials, ownerUid, profile, onClose, o
           </div>
           <span className="block mt-2 text-[0.6rem] text-white/25">Used only to prefill directions. Leave blank to let your map app use your current location.</span>
         </label>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-4 mb-8">
+          <div
+            onClick={event => updateHomePin(positionToPin(event))}
+            onPointerMove={event => {
+              if (event.buttons === 1) updateHomePin(positionToPin(event));
+            }}
+            className="relative h-72 overflow-hidden rounded-2xl border border-white/10 bg-[#152033] cursor-crosshair"
+          >
+            <div className="absolute inset-0 opacity-60 bg-[linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px)] bg-[size:48px_48px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_48%,rgba(77,148,255,.25),transparent_28%),radial-gradient(circle_at_66%_32%,rgba(77,255,136,.2),transparent_24%)]" />
+            {OFFICE_LOCATIONS.map(office => {
+              const position = pinToPosition(OFFICE_COORDINATES[office.id]);
+              return (
+                <div key={office.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={position}>
+                  <div className="px-2 py-1 rounded-lg text-[0.52rem] font-black shadow-lg border border-white/20" style={{ backgroundColor: office.color, color: '#111827' }}>
+                    {office.code}
+                  </div>
+                </div>
+              );
+            })}
+            {homePin && (
+              <div className="absolute -translate-x-1/2 -translate-y-full" style={pinToPosition(homePin)}>
+                <div className="flex flex-col items-center">
+                  <MapPin className="w-8 h-8 text-white drop-shadow-[0_6px_14px_rgba(0,0,0,.6)]" fill="#ff4d4d" />
+                  <span className="mt-1 px-2 py-0.5 rounded bg-black/50 text-[0.5rem] font-bold">HOME</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <button onClick={useCurrentLocation} className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 text-xs font-bold">
+              <Crosshair className="w-4 h-4" /> Use current location
+            </button>
+            <button disabled={!homePin} onClick={applyCommuteRanking} className="w-full flex items-center justify-center gap-2 bg-pink-500/15 hover:bg-pink-500/20 border border-pink-500/25 rounded-xl py-3 text-xs font-bold disabled:opacity-40">
+              <Heart className="w-4 h-4" /> Rank by commute
+            </button>
+            {homePin && (
+              <div className="p-4 bg-white/[.03] border border-white/10 rounded-2xl">
+                <div className="text-[0.55rem] uppercase tracking-widest text-white/30 font-bold mb-2">Home pin</div>
+                <div className="font-mono text-sm">{homePin.lat.toFixed(4)}, {homePin.lng.toFixed(4)}</div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="space-y-3">
           {ranking.map((officeId, index) => {

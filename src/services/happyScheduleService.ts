@@ -1,6 +1,7 @@
 import { OFFICE_LOCATIONS } from '../constants/locations';
 import { SheetDaySchedule } from './sheetService';
 import { TechnicianProfile } from './technicianProfileService';
+import { canonicalizeTechnicianInitials } from './technicianRosterService';
 
 export interface MoveRecommendation {
   technician: string;
@@ -57,7 +58,8 @@ export function rankMoveCandidates(
     techs.forEach(assignment => {
       const status = assignment.status?.toUpperCase();
       if (fromLocation === 'Floating' && ['OUT', 'OFF', 'VF', 'BIO', 'REQ'].includes(status || '')) return;
-      candidates.push(scoreTechnicianMove(assignment.person, fromLocation, destination, profiles[assignment.person]));
+      const technician = canonicalizeTechnicianInitials(assignment.person);
+      candidates.push(scoreTechnicianMove(technician, fromLocation, destination, profiles[technician]));
     });
   });
 
