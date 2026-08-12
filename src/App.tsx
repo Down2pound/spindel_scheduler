@@ -131,7 +131,7 @@ const WEEKS = [
   { id: 'saturdays', label: 'Saturdays', gid: '99001122' },
 ];
 
-const UNIVERSAL_PASSWORD = 'spindel';
+const UNIVERSAL_PASSWORD = '68Camaro';
 
 const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
@@ -781,7 +781,7 @@ export default function App() {
   const handlePasswordSubmit = (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
     setAuthError(null);
-    if (passwordInput.trim().toLowerCase() !== UNIVERSAL_PASSWORD) {
+    if (passwordInput.trim() !== UNIVERSAL_PASSWORD) {
       setAuthError('Incorrect password.');
       return;
     }
