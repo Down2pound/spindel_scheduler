@@ -66,7 +66,7 @@ const currentRoster = buildRecentTechnicianRoster([
   doctorIds: ['JC'],
 });
 
-assert.deepEqual(Object.keys(currentRoster), ['DSJ']);
+assert.deepEqual(Object.keys(currentRoster), ['DSJ', 'JC']);
 assert.equal(currentRoster.DSJ.refractingNote, 'Does not refract yet');
 
 console.log('technician roster/request tests passed');

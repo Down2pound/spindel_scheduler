@@ -98,6 +98,10 @@ const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging, refr
     opacity: isDragging ? 0.5 : 1,
   };
   const displayPerson = canonicalizeTechnicianInitials(assignment.person);
+  const isTechnicianJc = displayPerson === 'JC' && !assignment.isDoctor;
+  const neutralClass = isTechnicianJc
+    ? 'bg-white border-[#dce1eb] text-black'
+    : 'bg-white/5 border-white/10 text-white/60';
 
   return (
     <div
@@ -110,7 +114,7 @@ const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging, refr
         {...attributes}
         {...listeners}
         title={refractingNote || `${assignment.person} ${assignment.status || ''}`}
-        className={`px-2 py-1 border rounded-lg text-[0.6rem] font-bold transition-all flex items-center gap-1.5 ${refractingNote ? 'bg-amber-500/15 border-amber-400/30 text-amber-200' : 'bg-white/5 border-white/10 text-white/60'} ${isAdmin ? 'hover:bg-white/10 cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        className={`px-2 py-1 border rounded-lg text-[0.6rem] font-bold transition-all flex items-center gap-1.5 ${refractingNote ? 'bg-amber-500/15 border-amber-400/30 text-amber-200' : neutralClass} ${isAdmin ? 'hover:bg-white/10 cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
       >
         {isAdmin && <GripVertical className="w-2.5 h-2.5 opacity-20 group-hover:opacity-100 transition-opacity" />}
         {displayPerson} {assignment.status && <span className="opacity-40 ml-1">[{assignment.status}]</span>}
@@ -1956,7 +1960,7 @@ export default function App() {
                                   <button
                                     key={`${assignment.person}-${assignmentIndex}`}
                                     onClick={() => setEditingAssignment({ assignment, locationId: loc.id, index: assignmentIndex })}
-                                    className={`min-h-12 px-3 py-2 rounded-xl border text-left ${assignment.isDoctor ? 'brand-doctor border-[#243078]' : 'bg-[#f7f8fb] text-[#3f3f3f] border-[#dce1eb]'}`}
+                                    className={`min-h-12 px-3 py-2 rounded-xl border text-left ${assignment.isDoctor ? assignment.person === 'JC' ? 'bg-white text-red-600 border-red-500' : 'brand-doctor border-[#243078]' : 'bg-[#f7f8fb] text-[#3f3f3f] border-[#dce1eb]'}`}
                                   >
                                     <span className="block font-bold text-sm">{assignment.person}</span>
                                     <span className={`block text-[0.65rem] mt-0.5 ${assignment.isDoctor ? 'text-white/70' : 'text-[#667085]'}`}>{assignment.isDoctor ? 'Doctor' : `${assignment.startTime || '--'} – ${assignment.endTime || '--'}`}</span>
@@ -2128,7 +2132,7 @@ export default function App() {
                               <button
                                 key={`${a.person}-${aIdx}`}
                                 onClick={() => viewMode === 'admin' && setEditingAssignment({ assignment: a, locationId: loc.id, index: assignments.indexOf(a) })}
-                                className={`brand-doctor px-2 py-1 rounded-lg text-[0.6rem] font-black tracking-tighter transition-transform ${viewMode === 'admin' ? 'hover:scale-105' : 'cursor-default'}`}
+                                className={`${a.person === 'JC' ? 'bg-white border border-red-500 text-red-600' : 'brand-doctor'} px-2 py-1 rounded-lg text-[0.6rem] font-black tracking-tighter transition-transform ${viewMode === 'admin' ? 'hover:scale-105' : 'cursor-default'}`}
                                 title={`${a.person} (${a.startTime}-${a.endTime}) ${a.status || ''}`}
                               >
                                 {a.person}

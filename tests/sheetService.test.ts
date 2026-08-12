@@ -49,7 +49,7 @@ const compactWednesday = compactSchedules[2];
 assert.equal(compactMonday.dayName, 'Monday');
 assert.equal(compactMonday.date, '8/10');
 assert.ok(compactMonday.locations.Windham.find(assignment => assignment.person === 'DSJ' && !assignment.isDoctor));
-assert.ok(compactMonday.locations.Derry.find(assignment => assignment.person === 'JC' && assignment.isDoctor));
+assert.ok(compactMonday.locations.Derry.find(assignment => assignment.person === 'JC' && !assignment.isDoctor));
 assert.equal(compactMonday.locations.Floating.find(assignment => assignment.person === 'DERRY'), undefined);
 assert.equal(compactWednesday.notes, 'JO late night');
 

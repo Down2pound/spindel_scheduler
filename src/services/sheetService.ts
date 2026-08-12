@@ -119,6 +119,7 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
   const headerRow = findHeaderRow(data);
   const dateRow = headerRow + 1;
   const firstAssignmentRow = dateRow + 1;
+  const hasRoleSections = data.some(row => getRoleSection(row?.[0] || '') !== undefined);
 
   for (let i = 0; i < DAY_START_COLS.length; i++) {
     const col = DAY_START_COLS[i];
@@ -182,7 +183,7 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
       }
 
       if (startTime || endTime || location || status) {
-        const role = inferRole(personId, roleHint);
+        const role = hasRoleSections ? inferRole(personId, roleHint) : 'Technician';
         const assignment: SheetAssignment = {
           person: personId,
           role: role || 'Technician',

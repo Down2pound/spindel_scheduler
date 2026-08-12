@@ -55,7 +55,6 @@ export function buildRecentTechnicianRoster(
 ): Record<string, Technician> {
   const today = options.today || new Date();
   const lookbackDays = options.lookbackDays ?? 14;
-  const doctorIds = new Set((options.doctorIds || []).map(normalizeTechnicianInitials));
   const roster: Record<string, Technician> = {};
 
   for (const daySchedule of schedules) {
@@ -68,7 +67,7 @@ export function buildRecentTechnicianRoster(
     for (const assignments of Object.values(daySchedule.locations)) {
       for (const assignment of assignments) {
         const canonicalId = canonicalizeTechnicianInitials(assignment.person);
-        if (!canonicalId || assignment.isDoctor || doctorIds.has(canonicalId)) continue;
+        if (!canonicalId || assignment.isDoctor) continue;
         roster[canonicalId] = knownTechnicians[canonicalId] || { fullRefracting: true };
       }
     }
