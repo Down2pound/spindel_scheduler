@@ -672,6 +672,7 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<SheetAssignment | null>(null);
   const [showTechProfile, setShowTechProfile] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const isAdmin = viewMode === 'admin';
 
@@ -763,6 +764,25 @@ export default function App() {
       });
     } catch (err) {
       console.error('Failed to add log:', err);
+    }
+  };
+
+  const handleSignIn = async () => {
+    setAuthError(null);
+    try {
+      await signIn();
+    } catch (err) {
+      console.error('Google sign-in failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('auth/unauthorized-domain')) {
+        setAuthError('This preview domain is not authorized in Firebase yet. Add down2pound.github.io in Firebase Authentication > Settings > Authorized domains, then try again.');
+      } else if (message.includes('auth/popup-closed-by-user')) {
+        setAuthError('Google sign-in was closed before it finished.');
+      } else if (message.includes('auth/popup-blocked')) {
+        setAuthError('The browser blocked the Google sign-in popup. Allow popups for this site, then try again.');
+      } else {
+        setAuthError('Google sign-in failed. Check the Firebase Authentication setup for this deployment domain.');
+      }
     }
   };
 
@@ -1230,12 +1250,17 @@ export default function App() {
           <h1 className="text-3xl font-bold text-[var(--text)] mb-3 tracking-tight">Spindel Scheduler</h1>
           <p className="text-[var(--text-muted)] mb-10 text-sm leading-relaxed">A calmer way to coordinate clinic schedules and support your team.</p>
           <button
-            onClick={signIn}
+            onClick={handleSignIn}
             className="w-full bg-[#258c3b] text-white font-bold py-4 rounded-full hover:bg-[#243078] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
           >
             <Users className="w-5 h-5" />
             Authenticate with Google
           </button>
+          {authError && (
+            <div className="mt-5 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-left text-red-300 text-xs leading-relaxed">
+              {authError}
+            </div>
+          )}
         </motion.div>
       </div>
     );

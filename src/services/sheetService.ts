@@ -188,7 +188,7 @@ export async function fetchSheetData(url: string, gid?: string): Promise<SheetDa
   if (url.includes('docs.google.com/spreadsheets')) {
     const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (idMatch) {
-      csvUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/export?format=csv${gid ? `&gid=${gid}` : ''}`;
+      csvUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/gviz/tq?tqx=out:csv${gid ? `&gid=${gid}` : ''}&_=${Date.now()}`;
     }
   }
 
