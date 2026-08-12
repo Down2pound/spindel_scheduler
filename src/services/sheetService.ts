@@ -45,6 +45,15 @@ const SUMMARY_ROW_LABELS = new Set([
   'DERRY', 'LDERRY', 'LONDONDERRY', 'WINDHAM', 'RAYMOND', 'BEDFORD',
   'SURGERY', 'OFF', 'ADMIN',
 ]);
+const SUMMARY_LOCATION_LABELS: Record<string, string> = {
+  DERRY: 'Derry',
+  LDERRY: 'Londonderry',
+  LONDONDERRY: 'Londonderry',
+  WINDHAM: 'Windham',
+  RAYMOND: 'Raymond',
+  BEDFORD: 'Bedford',
+  SURGERY: 'Surgery',
+};
 
 const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ');
 
@@ -60,6 +69,19 @@ const getRoleSection = (value: string): RoleHint | undefined => {
   if (/^(DOCTOR|DOCTORS|MD|MDS)$/.test(label)) return 'Doctor';
   if (/^(TECH|TECHS|TECHNICIAN|TECHNICIANS)$/.test(label)) return 'Technician';
   return undefined;
+};
+
+const getSummaryLocation = (value: string): string | undefined => SUMMARY_LOCATION_LABELS[normalizeCode(value)];
+
+const parseDoctorSummaryCell = (value: string): Array<{ person: string; status: string }> => {
+  return normalize(value)
+    .match(/[A-Za-z]+(?:\([^)]*\))?/g)
+    ?.map(token => {
+      const person = normalizeCode(token.replace(/\([^)]*\)/g, ''));
+      const status = token.match(/\(([^)]*)\)/)?.[1]?.trim() || '';
+      return { person, status };
+    })
+    .filter(({ person }) => DOCTOR_IDS.has(person)) || [];
 };
 
 const getHeaderDayName = (value: string, fallback: string): string => {
@@ -138,6 +160,26 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
     for (let row = firstAssignmentRow; row < Math.min(data.length, 100); row++) {
       const personId = normalize(data[row]?.[0] || '');
       if (!personId) continue;
+      const summaryLocation = getSummaryLocation(personId);
+      if (summaryLocation) {
+        for (const doctor of parseDoctorSummaryCell(data[row]?.[col] || '')) {
+          const existing = daySchedule.locations[summaryLocation]?.some(assignment =>
+            assignment.isDoctor && normalizeCode(assignment.person) === doctor.person
+          );
+          if (existing) continue;
+
+          daySchedule.locations[summaryLocation].push({
+            person: doctor.person,
+            role: 'Doctor',
+            startTime: '',
+            endTime: '',
+            location: summaryLocation,
+            isDoctor: true,
+            status: doctor.status,
+          });
+        }
+        continue;
+      }
       if (SUMMARY_ROW_LABELS.has(normalizeCode(personId))) continue;
 
       const section = getRoleSection(personId);

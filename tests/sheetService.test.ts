@@ -45,11 +45,22 @@ const compactRows: string[][] = [
 const compactSchedules = parseSheetRows(compactRows);
 const compactMonday = compactSchedules[0];
 const compactWednesday = compactSchedules[2];
+const compactTuesday = compactSchedules[1];
 
 assert.equal(compactMonday.dayName, 'Monday');
 assert.equal(compactMonday.date, '8/10');
 assert.ok(compactMonday.locations.Windham.find(assignment => assignment.person === 'DSJ' && !assignment.isDoctor));
 assert.ok(compactMonday.locations.Derry.find(assignment => assignment.person === 'JC' && !assignment.isDoctor));
+assert.deepEqual(
+  compactMonday.locations.Derry.filter(assignment => assignment.isDoctor).map(assignment => assignment.person),
+  ['SW', 'DS'],
+  'DERRY summary doctor cells should create doctor assignments for Monday'
+);
+assert.deepEqual(
+  compactTuesday.locations.Derry.filter(assignment => assignment.isDoctor).map(assignment => assignment.person),
+  ['MF', 'DS', 'SW'],
+  'DERRY summary doctor cells should create doctor assignments for Tuesday'
+);
 assert.equal(compactMonday.locations.Floating.find(assignment => assignment.person === 'DERRY'), undefined);
 assert.equal(compactWednesday.notes, 'JO late night');
 
