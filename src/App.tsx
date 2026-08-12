@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
@@ -19,7 +19,7 @@ import {
   MapPin,
   Navigation
 } from 'lucide-react';
-import { db, auth, signIn, signOut, OperationType, handleFirestoreError } from './firebase';
+import { db, auth, signOut, OperationType, handleFirestoreError } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, updateDoc, collection, addDoc, query, orderBy, limit, where, getDocs, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { fetchSheetData, SheetDaySchedule, SheetAssignment } from './services/sheetService';
@@ -130,6 +130,8 @@ const WEEKS = [
   { id: 'week3', label: weekLabel(2), gid: '55667788' },
   { id: 'saturdays', label: 'Saturdays', gid: '99001122' },
 ];
+
+const UNIVERSAL_PASSWORD = 'spindel';
 
 const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
@@ -672,9 +674,12 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<SheetAssignment | null>(null);
   const [showTechProfile, setShowTechProfile] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordUnlocked, setPasswordUnlocked] = useState(() => localStorage.getItem('spindelPasswordUnlocked') === 'true');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const isAdmin = viewMode === 'admin';
+  const hasAccess = Boolean(user) || passwordUnlocked;
+  const isAdmin = viewMode === 'admin' || passwordUnlocked;
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -726,6 +731,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (passwordUnlocked && !user) {
+      setViewMode('admin');
+    }
+  }, [passwordUnlocked, user]);
+
+  useEffect(() => {
     if (!user || !isAdmin) return;
     
     const q = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100));
@@ -767,23 +778,22 @@ export default function App() {
     }
   };
 
-  const handleSignIn = async () => {
+  const handlePasswordSubmit = (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setAuthError(null);
-    try {
-      await signIn();
-    } catch (err) {
-      console.error('Google sign-in failed:', err);
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('auth/unauthorized-domain')) {
-        setAuthError('This preview domain is not authorized in Firebase yet. Add down2pound.github.io in Firebase Authentication > Settings > Authorized domains, then try again.');
-      } else if (message.includes('auth/popup-closed-by-user')) {
-        setAuthError('Google sign-in was closed before it finished.');
-      } else if (message.includes('auth/popup-blocked')) {
-        setAuthError('The browser blocked the Google sign-in popup. Allow popups for this site, then try again.');
-      } else {
-        setAuthError('Google sign-in failed. Check the Firebase Authentication setup for this deployment domain.');
-      }
+    if (passwordInput.trim().toLowerCase() !== UNIVERSAL_PASSWORD) {
+      setAuthError('Incorrect password.');
+      return;
     }
+    localStorage.setItem('spindelPasswordUnlocked', 'true');
+    setPasswordUnlocked(true);
+    setPasswordInput('');
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('spindelPasswordUnlocked');
+    setPasswordUnlocked(false);
+    if (user) signOut();
   };
 
   const cloneDaySchedule = (day: SheetDaySchedule): SheetDaySchedule => ({
@@ -824,6 +834,7 @@ export default function App() {
   };
 
   const persistDaySchedule = async (daySchedule: SheetDaySchedule) => {
+    if (!user) return;
     const scheduleId = `${selectedWeek.id}_${daySchedule.dayName}`;
     await setDoc(doc(db, 'schedules', scheduleId), daySchedule);
   };
@@ -986,10 +997,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user && sheetUrl) {
+    if (hasAccess && sheetUrl) {
       handleSync();
     }
-  }, [user]);
+  }, [hasAccess]);
 
   useEffect(() => {
     if (!user) return;
@@ -1008,7 +1019,7 @@ export default function App() {
   }, [user, selectedWeek.id, schedule.dayName]);
 
   const handleSync = async () => {
-    if (!user) return;
+    if (!hasAccess) return;
 
     if (!sheetUrl) {
       setShowSettings(true);
@@ -1044,9 +1055,9 @@ export default function App() {
   }, [selectedDayIdx, allSchedules]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!hasAccess) return;
     handleSync();
-  }, [user, selectedWeek]);
+  }, [hasAccess, selectedWeek]);
 
   const getStaffingStats = (locationId: string) => {
     const assignments = schedule.locations[locationId] || [];
@@ -1235,7 +1246,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-[#f0f2f7] flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(36,48,120,0.12)_0%,transparent_60%)]" />
@@ -1249,13 +1260,23 @@ export default function App() {
           </div>
           <h1 className="text-3xl font-bold text-[var(--text)] mb-3 tracking-tight">Spindel Scheduler</h1>
           <p className="text-[var(--text-muted)] mb-10 text-sm leading-relaxed">A calmer way to coordinate clinic schedules and support your team.</p>
-          <button
-            onClick={handleSignIn}
-            className="w-full bg-[#258c3b] text-white font-bold py-4 rounded-full hover:bg-[#243078] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
-          >
-            <Users className="w-5 h-5" />
-            Authenticate with Google
-          </button>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(event) => setPasswordInput(event.target.value)}
+              placeholder="Universal password"
+              className="w-full border border-[#dce1eb] rounded-full px-5 py-4 text-[#243078] text-sm font-semibold outline-none focus:border-[#258c3b] focus:ring-4 focus:ring-[#258c3b]/10"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="w-full bg-[#258c3b] text-white font-bold py-4 rounded-full hover:bg-[#243078] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg"
+            >
+              <Users className="w-5 h-5" />
+              Open Scheduler
+            </button>
+          </form>
           {authError && (
             <div className="mt-5 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-left text-red-300 text-xs leading-relaxed">
               {authError}
@@ -1350,7 +1371,7 @@ export default function App() {
         </div>
 
         <button 
-          onClick={signOut}
+          onClick={handleSignOut}
           aria-label="Sign out"
           className="p-2 md:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
         >
