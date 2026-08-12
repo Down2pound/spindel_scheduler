@@ -41,6 +41,10 @@ const FLOATING_STATUSES = new Set([
 
 const DAY_START_COLS = [1, 4, 7, 10, 13, 16];
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const SUMMARY_ROW_LABELS = new Set([
+  'DERRY', 'LDERRY', 'LONDONDERRY', 'WINDHAM', 'RAYMOND', 'BEDFORD',
+  'SURGERY', 'OFF', 'ADMIN',
+]);
 
 const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ');
 
@@ -56,6 +60,22 @@ const getRoleSection = (value: string): RoleHint | undefined => {
   if (/^(DOCTOR|DOCTORS|MD|MDS)$/.test(label)) return 'Doctor';
   if (/^(TECH|TECHS|TECHNICIAN|TECHNICIANS)$/.test(label)) return 'Technician';
   return undefined;
+};
+
+const getHeaderDayName = (value: string, fallback: string): string => {
+  const normalized = normalize(value);
+  const upper = normalized.toUpperCase();
+  return DAY_NAMES.find(day => upper.includes(day.toUpperCase())) || normalized || fallback;
+};
+
+const findHeaderRow = (data: string[][]): number => {
+  for (let row = 0; row < Math.min(data.length, 5); row++) {
+    const matches = DAY_START_COLS.filter((col, index) =>
+      normalizeCode(data[row]?.[col] || '').includes(DAY_NAMES[index].toUpperCase())
+    );
+    if (matches.length >= 3) return row;
+  }
+  return 1;
 };
 
 const inferRole = (personId: string, roleHint: RoleHint): RoleHint => {
@@ -96,11 +116,14 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
 
   const schedules: SheetDaySchedule[] = [];
   let roleHint: RoleHint = null;
+  const headerRow = findHeaderRow(data);
+  const dateRow = headerRow + 1;
+  const firstAssignmentRow = dateRow + 1;
 
   for (let i = 0; i < DAY_START_COLS.length; i++) {
     const col = DAY_START_COLS[i];
-    const dayName = normalize(data[1]?.[col] || '') || DAY_NAMES[i];
-    const date = normalize(data[2]?.[col] || '');
+    const dayName = getHeaderDayName(data[headerRow]?.[col] || '', DAY_NAMES[i]);
+    const date = normalize(data[dateRow]?.[col] || '');
 
     const daySchedule: SheetDaySchedule = {
       date,
@@ -111,9 +134,10 @@ export function parseSheetRows(data: string[][]): SheetDaySchedule[] {
 
     roleHint = null;
 
-    for (let row = 3; row < Math.min(data.length, 100); row++) {
+    for (let row = firstAssignmentRow; row < Math.min(data.length, 100); row++) {
       const personId = normalize(data[row]?.[0] || '');
       if (!personId) continue;
+      if (SUMMARY_ROW_LABELS.has(normalizeCode(personId))) continue;
 
       const section = getRoleSection(personId);
       if (section !== undefined) {

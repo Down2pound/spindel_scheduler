@@ -33,4 +33,24 @@ assert.ok(tuesdayTech, 'Tech section should keep JC as a technician even when JC
 assert.equal(tuesdayTech?.startTime, '12:30p');
 assert.equal(tuesdayTech?.endTime, '4:45p');
 
+const compactRows: string[][] = [
+  [' ', 'Week of 8/10-8/15 Monday', '', '', 'Tuesday', '', '', 'Wednesday', '', '', 'Thursday', '', '', 'Friday', '', '', 'Saturday', '', ''],
+  ['', '8/10', '', '', '8/11', '', '', '8/12', '', '', '8/13', '', '', '8/14', '', '', '8/15', '', ''],
+  ['DSJ', '7:45a', '4:45p', 'W', 'LASIK', '', '', '', '', 'DR', '7:45a', '4:45p', 'D', '', '', 'REQ', '', '', ''],
+  ['JC', '7:45a', '4:45p', 'D', '12:30p', '4:45p', 'D', '7:45a', '7:45p', 'W', '7:45a', '4:45p', 'D', '7:30a', '4:30p', 'D', '', '', ''],
+  ['DERRY', 'SW DS(p)', '', '', 'MF DS SW(p)', '', '', 'GS DR', '', '', 'GS SW', '', '', 'SW', '', '', 'SW', '', ''],
+  ['Notes', 'SW 515', '', '', '', '', '', 'JO late night', '', '', '', '', '', 'SERUM TEARS', '', '', '', '', ''],
+];
+
+const compactSchedules = parseSheetRows(compactRows);
+const compactMonday = compactSchedules[0];
+const compactWednesday = compactSchedules[2];
+
+assert.equal(compactMonday.dayName, 'Monday');
+assert.equal(compactMonday.date, '8/10');
+assert.ok(compactMonday.locations.Windham.find(assignment => assignment.person === 'DSJ' && !assignment.isDoctor));
+assert.ok(compactMonday.locations.Derry.find(assignment => assignment.person === 'JC' && assignment.isDoctor));
+assert.equal(compactMonday.locations.Floating.find(assignment => assignment.person === 'DERRY'), undefined);
+assert.equal(compactWednesday.notes, 'JO late night');
+
 console.log('sheetService parser regression tests passed');

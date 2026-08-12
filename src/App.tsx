@@ -141,6 +141,8 @@ const weekLabel = (weekOffset: number) => {
   return `${format(start, 'M/d')} - ${format(addDays(start, 5), 'M/d')}`;
 };
 
+const CURRENT_SCHEDULE_GID = '571129886';
+
 const WEEKS = [
   { id: 'current', label: `Current Week · ${format(TODAY, 'M/d/yy')}`, gid: '0' },
   { id: 'week2', label: weekLabel(1), gid: '11223344' }, // Placeholder GIDs
@@ -676,7 +678,8 @@ export default function App() {
   const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('sheetUrl') || 'https://docs.google.com/spreadsheets/d/10MTeD3grwqFyr4Odug3VQAih-8115_YVYlBNne2HzA0/edit?usp=sharing');
   const [weekGids, setWeekGids] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('weekGids');
-    return saved ? JSON.parse(saved) : { current: '0', week2: '', week3: '', saturdays: '' };
+    const parsed = saved ? JSON.parse(saved) : {};
+    return { week2: '', week3: '', saturdays: '', ...parsed, current: CURRENT_SCHEDULE_GID };
   });
   const [selectedWeek, setSelectedWeek] = useState(WEEKS[0]);
   const [error, setError] = useState<string | null>(null);
