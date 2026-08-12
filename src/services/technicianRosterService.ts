@@ -1,6 +1,10 @@
 import { Technician } from '../constants/technicians';
+import { type SheetDaySchedule } from './sheetService';
 
 export const SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY = 'spindelScheduleChangeRequests';
+const CANONICAL_TECHNICIAN_IDS: Record<string, string> = {
+  DS_T: 'DSJ',
+};
 
 export interface TechnicianRosterUpdate {
   initials: string;
@@ -27,11 +31,57 @@ export function normalizeTechnicianInitials(initials: string) {
   return initials.trim().toUpperCase().replace(/\s+/g, '_');
 }
 
+export function canonicalizeTechnicianInitials(initials: string) {
+  const normalized = normalizeTechnicianInitials(initials);
+  return CANONICAL_TECHNICIAN_IDS[normalized] || normalized;
+}
+
+const parseRosterDate = (value: string, today: Date) => {
+  const parts = value.split('/').map(part => Number(part));
+  if (parts.length < 2 || parts.some(Number.isNaN)) return null;
+
+  const [month, day, rawYear] = parts;
+  const year = rawYear === undefined
+    ? today.getFullYear()
+    : rawYear < 100 ? 2000 + rawYear : rawYear;
+
+  return new Date(year, month - 1, day);
+};
+
+export function buildRecentTechnicianRoster(
+  schedules: SheetDaySchedule[],
+  knownTechnicians: Record<string, Technician>,
+  options: { today?: Date; doctorIds?: string[]; lookbackDays?: number } = {}
+): Record<string, Technician> {
+  const today = options.today || new Date();
+  const lookbackDays = options.lookbackDays ?? 14;
+  const doctorIds = new Set((options.doctorIds || []).map(normalizeTechnicianInitials));
+  const roster: Record<string, Technician> = {};
+
+  for (const daySchedule of schedules) {
+    const rosterDate = parseRosterDate(daySchedule.date, today);
+    if (rosterDate) {
+      const ageDays = (today.getTime() - rosterDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays > lookbackDays) continue;
+    }
+
+    for (const assignments of Object.values(daySchedule.locations)) {
+      for (const assignment of assignments) {
+        const canonicalId = canonicalizeTechnicianInitials(assignment.person);
+        if (!canonicalId || assignment.isDoctor || doctorIds.has(canonicalId)) continue;
+        roster[canonicalId] = knownTechnicians[canonicalId] || { fullRefracting: true };
+      }
+    }
+  }
+
+  return Object.fromEntries(Object.entries(roster).sort(([a], [b]) => a.localeCompare(b)));
+}
+
 export function upsertTechnicianInRoster(
   roster: Record<string, Technician>,
   update: TechnicianRosterUpdate
 ): Record<string, Technician> {
-  const initials = normalizeTechnicianInitials(update.initials);
+  const initials = canonicalizeTechnicianInitials(update.initials);
   if (!initials) {
     throw new Error('Technician initials are required.');
   }

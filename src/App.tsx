@@ -38,6 +38,8 @@ import { saveTechnicianProfile, subscribeToTechnicianProfiles, TechnicianProfile
 import { rankMoveCandidates } from './services/happyScheduleService';
 import { parseLocalScheduleCommand } from './services/localCommandService';
 import {
+  buildRecentTechnicianRoster,
+  canonicalizeTechnicianInitials,
   createScheduleChangeRequest,
   normalizeTechnicianInitials,
   removeTechnicianFromRoster,
@@ -95,6 +97,7 @@ const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging, refr
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  const displayPerson = canonicalizeTechnicianInitials(assignment.person);
 
   return (
     <div
@@ -110,7 +113,7 @@ const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging, refr
         className={`px-2 py-1 border rounded-lg text-[0.6rem] font-bold transition-all flex items-center gap-1.5 ${refractingNote ? 'bg-amber-500/15 border-amber-400/30 text-amber-200' : 'bg-white/5 border-white/10 text-white/60'} ${isAdmin ? 'hover:bg-white/10 cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
       >
         {isAdmin && <GripVertical className="w-2.5 h-2.5 opacity-20 group-hover:opacity-100 transition-opacity" />}
-        {assignment.person} {assignment.status && <span className="opacity-40 ml-1">[{assignment.status}]</span>}
+        {displayPerson} {assignment.status && <span className="opacity-40 ml-1">[{assignment.status}]</span>}
         {refractingNote && <span className="text-[0.48rem] font-black">NO_REF</span>}
       </button>
     </div>
@@ -145,7 +148,7 @@ const WEEKS = [
   { id: 'saturdays', label: 'Saturdays', gid: '99001122' },
 ];
 
-const UNIVERSAL_PASSWORD = '68Camaro';
+const UNIVERSAL_PASSWORD = '68Camaro!!!';
 
 const INITIAL_WEEK_TEMPLATE: SheetDaySchedule[] = [
   {
@@ -694,6 +697,7 @@ export default function App() {
   const [newTechInitials, setNewTechInitials] = useState('');
   const [newTechCanRefract, setNewTechCanRefract] = useState(true);
   const [newTechNote, setNewTechNote] = useState('');
+  const [manualTechnicianIds, setManualTechnicianIds] = useState<string[]>([]);
   const [scheduleRequestText, setScheduleRequestText] = useState('');
   const [scheduleRequests, setScheduleRequests] = useState<ScheduleChangeRequest[]>(() => {
     try {
@@ -831,7 +835,7 @@ export default function App() {
     setError(null);
 
     try {
-      const initials = normalizeTechnicianInitials(newTechInitials);
+      const initials = canonicalizeTechnicianInitials(newTechInitials);
       const update = {
         initials,
         fullRefracting: newTechCanRefract,
@@ -839,6 +843,7 @@ export default function App() {
       };
 
       setTechnicians(current => upsertTechnicianInRoster(current, update));
+      setManualTechnicianIds(current => Array.from(new Set([...current, initials])).sort());
       if (user) {
         await updateTechConstraint(initials, {
           fullRefracting: update.fullRefracting,
@@ -856,10 +861,11 @@ export default function App() {
   };
 
   const handleRemoveTechnician = async (initials: string) => {
-    const normalized = normalizeTechnicianInitials(initials);
+    const normalized = canonicalizeTechnicianInitials(initials);
     if (!normalized) return;
 
     setTechnicians(current => removeTechnicianFromRoster(current, normalized));
+    setManualTechnicianIds(current => current.filter(id => id !== normalized));
     if (selectedTech === normalized) setSelectedTech('');
 
     if (user) {
@@ -1312,12 +1318,14 @@ export default function App() {
   };
 
   const isFullRefracting = (id: string) => {
-    const tech = technicians[id] || Object.values(technicians).find(t => t.aliases?.includes(id));
+    const canonicalId = canonicalizeTechnicianInitials(id);
+    const tech = technicians[canonicalId];
     return tech?.fullRefracting || false;
   };
 
   const getRefractingNote = (id: string) => {
-    const tech = technicians[id] || Object.values(technicians).find(t => t.aliases?.includes(id));
+    const canonicalId = canonicalizeTechnicianInitials(id);
+    const tech = technicians[canonicalId];
     return tech && !tech.fullRefracting ? tech.refractingNote || 'Does not refract yet' : '';
   };
 
@@ -1392,16 +1400,18 @@ export default function App() {
     );
   }
 
-  const allTechNames = Array.from(new Set(
-    [
-      ...Object.keys(technicians),
-      ...allSchedules.flatMap(day => 
-        Object.values(day.locations).flatMap(assignments => 
-          (assignments as SheetAssignment[]).filter(a => !a.isDoctor).map(a => a.person)
-        )
-      ),
-    ]
-  )).sort();
+  const recentTechnicianRoster = {
+    ...buildRecentTechnicianRoster(allSchedules, technicians, {
+      today: currentTime,
+      doctorIds: Object.keys(DOCTORS),
+    }),
+    ...Object.fromEntries(
+      manualTechnicianIds
+        .filter(initials => technicians[initials])
+        .map(initials => [initials, technicians[initials]])
+    ),
+  };
+  const allTechNames = Object.keys(recentTechnicianRoster).sort();
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-white/20">
@@ -1670,7 +1680,7 @@ export default function App() {
                 </form>
 
                 <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
-                  {Object.entries(technicians).sort(([a], [b]) => a.localeCompare(b)).map(([initials, tech]) => (
+                  {Object.entries(recentTechnicianRoster).sort(([a], [b]) => a.localeCompare(b)).map(([initials, tech]) => (
                     <div key={initials} className="flex items-center gap-2 rounded-xl border border-[#dce1eb] bg-[#f7f8fb] px-3 py-2">
                       <span className="text-sm font-bold text-[#243078]">{initials}</span>
                       {!tech.fullRefracting && (
@@ -1712,7 +1722,7 @@ export default function App() {
                   <div className="p-5 bg-pink-500/[.06] border border-pink-500/15 rounded-2xl">
                     <div className="text-[0.55rem] text-pink-300/60 uppercase tracking-widest font-black">Preference fit</div>
                     <div className="text-2xl font-bold mt-2">{(() => {
-                      const ranks = allSchedules.flatMap(day => Object.entries(day.locations).flatMap(([location, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && a.person === selectedTech) && OFFICE_LOCATIONS.some(o => o.id === location) ? [getPreferenceRank(selectedTech, location)] : [])).filter((rank): rank is number => rank !== null);
+                      const ranks = allSchedules.flatMap(day => Object.entries(day.locations).flatMap(([location, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && canonicalizeTechnicianInitials(a.person) === selectedTech) && OFFICE_LOCATIONS.some(o => o.id === location) ? [getPreferenceRank(selectedTech, location)] : [])).filter((rank): rank is number => rank !== null);
                       return ranks.length ? `${Math.round(ranks.reduce((sum, rank) => sum + (6 - rank) * 20, 0) / ranks.length)}%` : '--';
                     })()}</div>
                     <div className="text-[0.6rem] text-white/30 mt-1">Based on your office ranking</div>
@@ -1721,7 +1731,7 @@ export default function App() {
                     <div className="text-[0.55rem] text-white/30 uppercase tracking-widest font-black">Weekly round trip</div>
                     <div className="text-2xl font-bold mt-2">{(() => {
                       const oneWay = allSchedules.reduce((total, day) => {
-                        const office = Object.entries(day.locations).find(([, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && a.person === selectedTech))?.[0];
+                        const office = Object.entries(day.locations).find(([, assignments]) => (assignments as SheetAssignment[]).some(a => !a.isDoctor && canonicalizeTechnicianInitials(a.person) === selectedTech))?.[0];
                         return total + (office ? (selectedProfile?.commuteMiles?.[office] || 0) : 0);
                       }, 0);
                       return oneWay ? `${(oneWay * 2).toFixed(1)} mi` : '--';
@@ -1741,7 +1751,7 @@ export default function App() {
                   let techLoc = '';
                   
                   Object.entries(day.locations).forEach(([locId, assignments]) => {
-                    const found = (assignments as SheetAssignment[]).find(a => a.person === selectedTech);
+                    const found = (assignments as SheetAssignment[]).find(a => canonicalizeTechnicianInitials(a.person) === selectedTech);
                     if (found) {
                       techAssignment = found;
                       techLoc = locId;

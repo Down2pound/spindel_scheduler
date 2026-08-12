@@ -10,16 +10,9 @@ export interface Technician {
 }
 
 export const TECHNICIANS: Record<string, Technician> = {
-  DS_T: { 
-    fullRefracting: false, 
-    pairedWith: ["DR", "JC"],
-    aliases: ["DSJ"],
-    refractingNote: "Does not refract yet"
-  },
   DSJ: { 
     fullRefracting: false, 
     pairedWith: ["DR", "JC"], 
-    aliases: ["DS_T"],
     refractingNote: "Does not refract yet"
   },
   LT: {
