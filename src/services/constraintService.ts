@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, doc, setDoc, getDocs, onSnapshot, query } from "firebase/firestore";
+import { collection, deleteDoc, doc, setDoc, getDocs, onSnapshot, query } from "firebase/firestore";
 import { DOCTORS, Doctor } from "../constants/doctors";
 import { TECHNICIANS, Technician } from "../constants/technicians";
 
@@ -50,4 +50,8 @@ export async function updateDoctorConstraint(id: string, data: Partial<Doctor>) 
 
 export async function updateTechConstraint(id: string, data: Partial<Technician>) {
   await setDoc(doc(db, "technicians", id), data, { merge: true });
+}
+
+export async function deleteTechConstraint(id: string) {
+  await deleteDoc(doc(db, "technicians", id));
 }

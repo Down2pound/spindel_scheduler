@@ -17,7 +17,11 @@ import {
   ArrowRight,
   Heart,
   MapPin,
-  Navigation
+  Navigation,
+  UserPlus,
+  Trash2,
+  MessageSquare,
+  CheckCircle2
 } from 'lucide-react';
 import { db, auth, signOut, OperationType, handleFirestoreError } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -33,6 +37,14 @@ import { TechnicianProfilePanel } from './components/TechnicianProfilePanel';
 import { saveTechnicianProfile, subscribeToTechnicianProfiles, TechnicianProfile } from './services/technicianProfileService';
 import { rankMoveCandidates } from './services/happyScheduleService';
 import { parseLocalScheduleCommand } from './services/localCommandService';
+import {
+  createScheduleChangeRequest,
+  normalizeTechnicianInitials,
+  removeTechnicianFromRoster,
+  ScheduleChangeRequest,
+  SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY,
+  upsertTechnicianInRoster,
+} from './services/technicianRosterService';
 
 // Dnd Kit
 import {
@@ -69,7 +81,7 @@ const THEMES = [
 const LOCATIONS = SCHEDULE_LOCATIONS;
 
 // --- Dnd Components ---
-const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging }: any) => {
+const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging, refractingNote }: any) => {
   const {
     attributes,
     listeners,
@@ -94,10 +106,12 @@ const SortableTechnician = ({ id, assignment, isAdmin, onClick, isDragging }: an
         onClick={onClick}
         {...attributes}
         {...listeners}
-        className={`px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-[0.6rem] font-bold text-white/60 transition-all flex items-center gap-1.5 ${isAdmin ? 'hover:bg-white/10 cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        title={refractingNote || `${assignment.person} ${assignment.status || ''}`}
+        className={`px-2 py-1 border rounded-lg text-[0.6rem] font-bold transition-all flex items-center gap-1.5 ${refractingNote ? 'bg-amber-500/15 border-amber-400/30 text-amber-200' : 'bg-white/5 border-white/10 text-white/60'} ${isAdmin ? 'hover:bg-white/10 cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
       >
         {isAdmin && <GripVertical className="w-2.5 h-2.5 opacity-20 group-hover:opacity-100 transition-opacity" />}
         {assignment.person} {assignment.status && <span className="opacity-40 ml-1">[{assignment.status}]</span>}
+        {refractingNote && <span className="text-[0.48rem] font-black">NO_REF</span>}
       </button>
     </div>
   );
@@ -638,7 +652,7 @@ function EditAssignmentModal({ assignment, onClose, onSave }: {
   );
 }
 
-import { initializeConstraints, subscribeToDoctors, subscribeToTechnicians, updateDoctorConstraint, updateTechConstraint } from "./services/constraintService";
+import { initializeConstraints, subscribeToDoctors, subscribeToTechnicians, updateDoctorConstraint, updateTechConstraint, deleteTechConstraint } from "./services/constraintService";
 import { Doctor } from "./constants/doctors";
 import { Technician } from "./constants/technicians";
 
@@ -649,8 +663,8 @@ export default function App() {
   const [selectedTech, setSelectedTech] = useState<string>('');
   const [schedule, setSchedule] = useState<SheetDaySchedule>(INITIAL_WEEK_DATA[CURRENT_DAY_INDEX]);
   const [allSchedules, setAllSchedules] = useState<SheetDaySchedule[]>(INITIAL_WEEK_DATA);
-  const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
-  const [technicians, setTechnicians] = useState<Record<string, Technician>>({});
+  const [doctors, setDoctors] = useState<Record<string, Doctor>>(DOCTORS);
+  const [technicians, setTechnicians] = useState<Record<string, Technician>>(TECHNICIANS);
   const [technicianProfiles, setTechnicianProfiles] = useState<Record<string, TechnicianProfile>>({});
   const [selectedDayIdx, setSelectedDayIdx] = useState(CURRENT_DAY_INDEX);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -677,6 +691,18 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordUnlocked, setPasswordUnlocked] = useState(() => localStorage.getItem('spindelPasswordUnlocked') === 'true');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [newTechInitials, setNewTechInitials] = useState('');
+  const [newTechCanRefract, setNewTechCanRefract] = useState(true);
+  const [newTechNote, setNewTechNote] = useState('');
+  const [scheduleRequestText, setScheduleRequestText] = useState('');
+  const [scheduleRequests, setScheduleRequests] = useState<ScheduleChangeRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem(SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const hasAccess = Boolean(user) || passwordUnlocked;
   const isAdmin = viewMode === 'admin' || passwordUnlocked;
@@ -737,6 +763,10 @@ export default function App() {
   }, [passwordUnlocked, user]);
 
   useEffect(() => {
+    localStorage.setItem(SCHEDULE_CHANGE_REQUESTS_STORAGE_KEY, JSON.stringify(scheduleRequests));
+  }, [scheduleRequests]);
+
+  useEffect(() => {
     if (!user || !isAdmin) return;
     
     const q = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100));
@@ -794,6 +824,76 @@ export default function App() {
     localStorage.removeItem('spindelPasswordUnlocked');
     setPasswordUnlocked(false);
     if (user) signOut();
+  };
+
+  const handleAddTechnician = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    try {
+      const initials = normalizeTechnicianInitials(newTechInitials);
+      const update = {
+        initials,
+        fullRefracting: newTechCanRefract,
+        refractingNote: newTechCanRefract ? undefined : newTechNote || 'Does not refract yet',
+      };
+
+      setTechnicians(current => upsertTechnicianInRoster(current, update));
+      if (user) {
+        await updateTechConstraint(initials, {
+          fullRefracting: update.fullRefracting,
+          ...(update.refractingNote ? { refractingNote: update.refractingNote } : {}),
+        });
+        await addLog('TECHNICIAN_ROSTER', `Added or updated technician ${initials}`, update);
+      }
+
+      setNewTechInitials('');
+      setNewTechCanRefract(true);
+      setNewTechNote('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add technician.');
+    }
+  };
+
+  const handleRemoveTechnician = async (initials: string) => {
+    const normalized = normalizeTechnicianInitials(initials);
+    if (!normalized) return;
+
+    setTechnicians(current => removeTechnicianFromRoster(current, normalized));
+    if (selectedTech === normalized) setSelectedTech('');
+
+    if (user) {
+      try {
+        await deleteTechConstraint(normalized);
+        await addLog('TECHNICIAN_ROSTER', `Removed technician ${normalized}`, { initials: normalized });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `technicians/${normalized}`);
+      }
+    }
+  };
+
+  const handleScheduleRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    try {
+      const request = createScheduleChangeRequest({
+        requester: selectedTech || 'Admin',
+        dayName: allSchedules[selectedDayIdx]?.dayName || schedule.dayName,
+        details: scheduleRequestText,
+      });
+      setScheduleRequests(current => [request, ...current].slice(0, 25));
+      setScheduleRequestText('');
+      await addLog('SCHEDULE_REQUEST', `${request.requester} requested a schedule change`, request);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save schedule change request.');
+    }
+  };
+
+  const handleResolveScheduleRequest = (requestId: string) => {
+    setScheduleRequests(current =>
+      current.map(request => request.id === requestId ? { ...request, status: 'done' } : request)
+    );
   };
 
   const cloneDaySchedule = (day: SheetDaySchedule): SheetDaySchedule => ({
@@ -1216,6 +1316,11 @@ export default function App() {
     return tech?.fullRefracting || false;
   };
 
+  const getRefractingNote = (id: string) => {
+    const tech = technicians[id] || Object.values(technicians).find(t => t.aliases?.includes(id));
+    return tech && !tech.fullRefracting ? tech.refractingNote || 'Does not refract yet' : '';
+  };
+
   const selectedProfile = selectedTech ? technicianProfiles[selectedTech] : undefined;
 
   const getPreferenceRank = (techId: string, locationId: string) => {
@@ -1288,11 +1393,14 @@ export default function App() {
   }
 
   const allTechNames = Array.from(new Set(
-    allSchedules.flatMap(day => 
-      Object.values(day.locations).flatMap(assignments => 
-        (assignments as SheetAssignment[]).filter(a => !a.isDoctor).map(a => a.person)
-      )
-    )
+    [
+      ...Object.keys(technicians),
+      ...allSchedules.flatMap(day => 
+        Object.values(day.locations).flatMap(assignments => 
+          (assignments as SheetAssignment[]).filter(a => !a.isDoctor).map(a => a.person)
+        )
+      ),
+    ]
   )).sort();
 
   return (
@@ -1466,6 +1574,125 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        <section className="mb-8 bg-white border border-[#dce1eb] rounded-2xl p-5 shadow-sm">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.2fr] gap-6">
+            <form onSubmit={handleScheduleRequestSubmit} className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#243078]/10 text-[#243078] flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-[#243078]">Schedule change request</h2>
+                    <p className="text-xs text-[#667085]">Requests save on this preview and stay visible below.</p>
+                  </div>
+                </div>
+                <span className="text-[0.65rem] font-bold text-[#667085] uppercase tracking-widest">
+                  {allSchedules[selectedDayIdx]?.dayName || schedule.dayName}
+                </span>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-3">
+                <input
+                  value={scheduleRequestText}
+                  onChange={(event) => setScheduleRequestText(event.target.value)}
+                  placeholder="Example: move LT later on Wednesday"
+                  className="flex-1 border border-[#dce1eb] rounded-xl px-4 py-3 text-sm text-[#243078] outline-none focus:border-[#258c3b] focus:ring-4 focus:ring-[#258c3b]/10"
+                />
+                <button
+                  type="submit"
+                  className="brand-primary px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Submit
+                </button>
+              </div>
+
+              {scheduleRequests.length > 0 && (
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                  {scheduleRequests.slice(0, 4).map(request => (
+                    <div key={request.id} className="flex items-start gap-3 rounded-xl border border-[#dce1eb] bg-[#f7f8fb] p-3">
+                      <div className={`mt-0.5 w-2 h-2 rounded-full ${request.status === 'open' ? 'bg-[#258c3b]' : 'bg-[#98a2b3]'}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-[0.65rem] font-bold text-[#667085] uppercase tracking-widest">
+                          <span>{request.requester}</span>
+                          <span>{request.dayName}</span>
+                          <span>{request.status}</span>
+                        </div>
+                        <p className="text-sm text-[#243078] mt-1 break-words">{request.details}</p>
+                      </div>
+                      {isAdmin && request.status === 'open' && (
+                        <button
+                          type="button"
+                          onClick={() => handleResolveScheduleRequest(request.id)}
+                          className="p-2 rounded-lg text-[#258c3b] hover:bg-green-50"
+                          aria-label="Mark request done"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </form>
+
+            {isAdmin && (
+              <div className="space-y-4">
+                <form onSubmit={handleAddTechnician} className="grid grid-cols-1 md:grid-cols-[120px_170px_1fr_auto] gap-3">
+                  <input
+                    value={newTechInitials}
+                    onChange={(event) => setNewTechInitials(event.target.value)}
+                    placeholder="Initials"
+                    className="border border-[#dce1eb] rounded-xl px-4 py-3 text-sm font-bold uppercase text-[#243078] outline-none focus:border-[#258c3b] focus:ring-4 focus:ring-[#258c3b]/10"
+                  />
+                  <label className="flex items-center gap-3 border border-[#dce1eb] rounded-xl px-4 py-3 text-xs font-bold text-[#243078]">
+                    <input
+                      type="checkbox"
+                      checked={newTechCanRefract}
+                      onChange={(event) => setNewTechCanRefract(event.target.checked)}
+                      className="h-4 w-4 accent-[#258c3b]"
+                    />
+                    Can refract
+                  </label>
+                  <input
+                    value={newTechNote}
+                    onChange={(event) => setNewTechNote(event.target.value)}
+                    placeholder="Note if they do not refract yet"
+                    disabled={newTechCanRefract}
+                    className="border border-[#dce1eb] rounded-xl px-4 py-3 text-sm text-[#243078] outline-none focus:border-[#258c3b] focus:ring-4 focus:ring-[#258c3b]/10 disabled:bg-[#f2f4f7] disabled:text-[#98a2b3]"
+                  />
+                  <button type="submit" className="brand-primary px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Save
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
+                  {Object.entries(technicians).sort(([a], [b]) => a.localeCompare(b)).map(([initials, tech]) => (
+                    <div key={initials} className="flex items-center gap-2 rounded-xl border border-[#dce1eb] bg-[#f7f8fb] px-3 py-2">
+                      <span className="text-sm font-bold text-[#243078]">{initials}</span>
+                      {!tech.fullRefracting && (
+                        <span className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          {tech.refractingNote || 'Does not refract yet'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTechnician(initials)}
+                        className="p-1.5 rounded-lg text-[#667085] hover:text-red-600 hover:bg-red-50"
+                        aria-label={`Remove ${initials}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
         {viewMode === 'technician' ? (
           <div className="flex-1">
@@ -1843,6 +2070,7 @@ export default function App() {
                                       key={`${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                       id={`${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                       assignment={a}
+                                      refractingNote={getRefractingNote(a.person)}
                                       isAdmin={isAdmin}
                                       isDragging={activeId === `${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                       onClick={() => viewMode === 'admin' && setEditingAssignment({ assignment: a, locationId: loc.id, index: assignments.indexOf(a) })}
@@ -1908,6 +2136,7 @@ export default function App() {
                                   key={`${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                   id={`${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                   assignment={a}
+                                  refractingNote={getRefractingNote(a.person)}
                                   isAdmin={isAdmin}
                                   isDragging={activeId === `${loc.id}|${dIdx}|${assignments.indexOf(a)}`}
                                   onClick={() => viewMode === 'admin' && setEditingAssignment({ assignment: a, locationId: loc.id, index: assignments.indexOf(a) })}

@@ -6,18 +6,21 @@ export interface Technician {
   softConstraints?: { type: string; doctor: string; message: string }[];
   officeRanking?: string[];
   commuteMiles?: Record<string, number>;
+  refractingNote?: string;
 }
 
 export const TECHNICIANS: Record<string, Technician> = {
   DS_T: { 
     fullRefracting: false, 
     pairedWith: ["DR", "JC"],
-    aliases: ["DSJ"]
+    aliases: ["DSJ"],
+    refractingNote: "Does not refract yet"
   },
   DSJ: { 
     fullRefracting: false, 
     pairedWith: ["DR", "JC"], 
-    aliases: ["DS_T"] 
+    aliases: ["DS_T"],
+    refractingNote: "Does not refract yet"
   },
   LT: {
     fullRefracting: true,
@@ -38,6 +41,7 @@ export const TECHNICIANS: Record<string, Technician> = {
   },
   BJ: {
     fullRefracting: false,
-    pairedWith: "MG"
+    pairedWith: "MG",
+    refractingNote: "Does not refract yet"
   }
 };

@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit",
-    "test:parser": "tsx tests/sheetService.test.ts",
+    "test:parser": "tsx tests/sheetService.test.ts && tsx tests/technicianRosterService.test.ts",
     "test:happy-schedule": "tsx tests/happyScheduleService.test.ts",
     "test:local-commands": "tsx tests/localCommandService.test.ts",
     "test": "pnpm run test:parser && pnpm run test:happy-schedule && pnpm run test:local-commands"
